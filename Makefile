@@ -17,3 +17,11 @@ build:
 .PHONY: run
 run: build
 	@/tmp/bin/$(API_BIN_NAME)
+
+.PHONY: migration/up
+migration/up:
+	goose -dir ./database/schema postgres "postgres://postgres:postgres@localhost:5432/local-db?sslmode=disable" up
+
+.PHONY: migration/down
+migration/down:
+	goose -dir ./database/schema postgres "postgres://postgres:postgres@localhost:5432/local-db?sslmode=disable" down

@@ -7,7 +7,6 @@ Users {
     name,
     password, // bcrypt2
     email,
-    transactions,
 }
 ```
 
@@ -82,7 +81,6 @@ Savings {
 
 #### Extra ideas
 
-Maybe don't add password and have a OAuth login
 Check if there is an API to get data from bank account
 
 #### alksdjfa
