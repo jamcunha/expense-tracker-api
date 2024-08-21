@@ -45,7 +45,7 @@ func NewServer() *Server {
 func (s *Server) Start() error {
 	r := http.NewServeMux()
 
-	jwtMiddleware := middleware.JWTAuth
+	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f) }
 
 	r.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		utils.WriteJSON(w, http.StatusOK, struct{}{})
@@ -53,10 +53,10 @@ func (s *Server) Start() error {
 
 	r.HandleFunc("POST /users", s.handleCreateUser)
 	r.HandleFunc("DELETE /users", s.handleDeleteUser)
+	r.HandleFunc("POST /login", s.handleUserLogin)
 
 	// testing JWT
-	r.HandleFunc("POST /login", s.handleUserLogin)
-	r.Handle("GET /test", jwtMiddleware(http.HandlerFunc(s.handleTest)))
+	r.Handle("GET /test", jwtMiddleware(s.handleTest))
 
 	v1 := http.NewServeMux()
 	v1.Handle("/api/v1/", http.StripPrefix("/api/v1", r))
@@ -65,7 +65,8 @@ func (s *Server) Start() error {
 	return http.ListenAndServe(s.addr, v1)
 }
 
+// NOTE: this is a temporary handler to test the JWT middleware
 func (s *Server) handleTest(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(string)
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"userID": userID})
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"user_id": userID})
 }

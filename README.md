@@ -5,7 +5,7 @@
 ```
 Users {
     name,
-    password, // bcrypt2
+    password,
     email,
 }
 ```
@@ -82,8 +82,3 @@ Savings {
 #### Extra ideas
 
 Check if there is an API to get data from bank account
-
-#### alksdjfa
-
-bcrypt2 for password hashing
-JWT for authentication

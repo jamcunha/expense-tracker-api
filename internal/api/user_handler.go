@@ -1,7 +1,9 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"github.com/jamcunha/expense-tracker/internal/database"
 	"github.com/jamcunha/expense-tracker/internal/model"
 	"github.com/jamcunha/expense-tracker/internal/utils"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -21,8 +24,6 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 
-	// TODO: use bcrypt2
-
 	params := parameters{}
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
@@ -30,6 +31,19 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 			w,
 			http.StatusBadRequest,
 			utils.ApiError{Error: fmt.Sprintf("Invalid JSON: %v", err)},
+		)
+		return
+	}
+
+	encryptedPassword, err := bcrypt.GenerateFromPassword(
+		[]byte(params.Password),
+		bcrypt.DefaultCost,
+	)
+	if err != nil {
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			utils.ApiError{Error: fmt.Sprintf("Error encrypting password: %v", err)},
 		)
 	}
 
@@ -39,7 +53,7 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: time.Now(),
 		Name:      params.Name,
 		Email:     params.Email,
-		Password:  params.Password,
+		Password:  string(encryptedPassword),
 	})
 	if err != nil {
 		utils.WriteJSON(
@@ -47,6 +61,7 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError,
 			utils.ApiError{Error: fmt.Sprintf("Error creating user: %v", err)},
 		)
+		return
 	}
 
 	utils.WriteJSON(w, http.StatusCreated, model.DatabaseUserToUser(user))
@@ -65,6 +80,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest,
 			utils.ApiError{Error: fmt.Sprintf("Invalid JSON: %v", err)},
 		)
+		return
 	}
 
 	id, err := uuid.Parse(params.ID)
@@ -74,6 +90,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest,
 			utils.ApiError{Error: fmt.Sprintf("Invalid ID: %v", err)},
 		)
+		return
 	}
 
 	err = s.DB.DeleteUser(r.Context(), id)
@@ -83,27 +100,67 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError,
 			utils.ApiError{Error: fmt.Sprintf("Error deleting user: %v", err)},
 		)
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// TODO: Implement login
 func (s *Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
-	// create a random token for now
-	token, err := createJWT(model.User{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Name:      "test",
-		Email:     "test@email.com",
-	})
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	params := parameters{}
+	err := json.NewDecoder(r.Body).Decode(&params)
+	if err != nil {
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			utils.ApiError{Error: fmt.Sprintf("Invalid JSON: %v", err)},
+		)
+		return
+	}
+
+	dbUser, err := s.DB.GetUserByEmail(r.Context(), params.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			utils.WriteJSON(
+				w,
+				http.StatusUnauthorized,
+				utils.ApiError{Error: "Invalid credentials"},
+			)
+			return
+		}
+
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			utils.ApiError{Error: fmt.Sprintf("Error logging in: %v", err)},
+		)
+		return
+	}
+
+	user := model.DatabaseUserToUser(dbUser)
+
+	if !user.ComparePassword(params.Password) {
+		utils.WriteJSON(
+			w,
+			http.StatusUnauthorized,
+			utils.ApiError{Error: "Invalid credentials"},
+		)
+		return
+	}
+
+	token, err := createJWT(user)
 	if err != nil {
 		utils.WriteJSON(
 			w,
 			http.StatusInternalServerError,
 			utils.ApiError{Error: fmt.Sprintf("Error creating token: %v", err)},
 		)
+		return
 	}
 
 	utils.WriteJSON(w, http.StatusOK, map[string]string{"token": token})

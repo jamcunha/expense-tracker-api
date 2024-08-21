@@ -57,12 +57,14 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-const getUserByID = `-- name: GetUserByID :one
-SELECT id, created_at, updated_at, name, email, password FROM users WHERE id = $1
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, created_at, updated_at, name, email, password FROM users WHERE email = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByID, id)
+// NOTE: Use this in login only to get the user and then
+// compare the hashed password with the one provided by the user
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -75,17 +77,12 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return i, err
 }
 
-const loginUser = `-- name: LoginUser :one
-SELECT id, created_at, updated_at, name, email, password FROM users WHERE email = $1 AND password = $2
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, created_at, updated_at, name, email, password FROM users WHERE id = $1
 `
 
-type LoginUserParams struct {
-	Email    string
-	Password string
-}
-
-func (q *Queries) LoginUser(ctx context.Context, arg LoginUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, loginUser, arg.Email, arg.Password)
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
