@@ -1,23 +1,19 @@
 package main
 
 import (
-	"flag"
 	"log"
 
 	"github.com/jamcunha/expense-tracker/internal/api"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	addr := flag.String("addr", ":8080", "address to listen on")
-	dbUrl := flag.String(
-		"db-url",
-		"postgres://postgres:postgres@localhost:5432/local-db?sslmode=disable",
-		"database url",
-	)
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
 
-	flag.Parse()
-
-	server := api.NewServer(*addr, *dbUrl)
-	log.Printf("Server started on %s", *addr)
+	server := api.NewServer()
 	log.Fatal(server.Start())
 }
