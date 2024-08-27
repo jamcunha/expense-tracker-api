@@ -55,18 +55,14 @@ func (s *Server) Start() error {
 	r.HandleFunc("DELETE /users", s.handleDeleteUser)
 	r.HandleFunc("POST /login", s.handleUserLogin)
 
-	// testing JWT
-	r.Handle("GET /test", jwtMiddleware(s.handleTest))
+	r.Handle("GET /categories", jwtMiddleware(s.handleGetUserCategories))
+	r.Handle("POST /categories", jwtMiddleware(s.handleCreateCategory))
+	// maybe use DELETE /categories/:id
+	r.Handle("DELETE /categories", jwtMiddleware(s.handleDeleteCategory))
 
 	v1 := http.NewServeMux()
 	v1.Handle("/api/v1/", http.StripPrefix("/api/v1", r))
 
 	log.Printf("server listening on %s", s.addr)
 	return http.ListenAndServe(s.addr, v1)
-}
-
-// NOTE: this is a temporary handler to test the JWT middleware
-func (s *Server) handleTest(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("userID").(string)
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"user_id": userID})
 }

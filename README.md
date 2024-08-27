@@ -2,6 +2,8 @@
 
 ## TODO: write the README
 
+TODO: write tests for API instead of testing manually with curl
+
 ```
 Users {
     name,
@@ -11,9 +13,8 @@ Users {
 ```
 
 ```
-Transactions {
+Expenses {
     title
-    transaction_type, // income or expense
     amount,
     date,
     category, // add an FK or let user have it's own categories
@@ -29,6 +30,12 @@ Categories {
     Entertainment,
     Other,
 }
+
+// explore this way
+Categories {
+    name,
+    user, // add user as FK
+}
 ```
 
 ```
@@ -41,16 +48,19 @@ Budgets {
 }
 ```
 
+Below are ideas for future features
+
 ```
 Frequencies {
-daily,
-weekly,
-monthly,
-yearly,
+    daily,
+    weekly,
+    monthly,
+    yearly,
 }
 ```
 
 ```
+// maybe add a isPayed tracker
 RecurringExpenses {
     title,
     amount,
@@ -59,23 +69,6 @@ RecurringExpenses {
     frequency, // add frequency as a FK
     user, // add user as a FK
     category, // add category as a FK
-}
-```
-
-```
-Goals {
-    title,
-    amount_to_save,
-    start_date,
-    end_date,
-    user, // add user as a FK
-}
-```
-
-```
-Savings {
-    amount,
-    user, // add user as a FK
 }
 ```
 
