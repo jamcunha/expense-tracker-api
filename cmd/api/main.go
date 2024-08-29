@@ -1,9 +1,12 @@
 package main
 
 import (
-	"log"
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
 
-	"github.com/jamcunha/expense-tracker/internal/api"
+	"github.com/jamcunha/expense-tracker/internal/application"
 
 	"github.com/joho/godotenv"
 )
@@ -11,9 +14,27 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+		fmt.Println("failed to load env:", err)
+		return
 	}
 
-	server := api.NewServer()
-	log.Fatal(server.Start())
+	cfg, err := application.LoadConfig()
+	if err != nil {
+		fmt.Println("failed to load config:", err)
+		return
+	}
+
+	app, err := application.New(cfg)
+	if err != nil {
+		fmt.Println("failed to create application:", err)
+		return
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	err = app.Start(ctx)
+	if err != nil {
+		fmt.Println("failed to start application:", err)
+	}
 }

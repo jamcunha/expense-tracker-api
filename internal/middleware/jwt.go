@@ -3,65 +3,58 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/jamcunha/expense-tracker/internal/utils"
 )
 
 func JWTAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) { // Authorization: Bearer <token>
 			if r.Header.Get("Authorization") == "" {
-				utils.WriteJSON(
-					w,
-					http.StatusUnauthorized,
-					utils.ApiError{Error: "No Token Provided"},
-				)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+
+				w.Write([]byte(`{"error": "No Token Provided"}`))
 				return
 			}
 
 			token, err := validateJWT(strings.Split(r.Header.Get("Authorization"), " ")[1])
 			if err != nil {
-				utils.WriteJSON(
-					w,
-					http.StatusUnauthorized,
-					utils.ApiError{Error: "Invalid Token"},
-				)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+
+				w.Write([]byte(`{"error": "Invalid Token"}`))
 				return
 			}
 
 			if !token.Valid {
-				utils.WriteJSON(
-					w,
-					http.StatusUnauthorized,
-					utils.ApiError{Error: "Invalid Token"},
-				)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+
+				w.Write([]byte(`{"error": "Invalid Token"}`))
 				return
 			}
 
 			userIDString, err := token.Claims.GetSubject()
 			if err != nil {
-				utils.WriteJSON(
-					w,
-					http.StatusUnauthorized,
-					utils.ApiError{Error: "Invalid Token"},
-				)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+
+				w.Write([]byte(`{"error": "Invalid Token"}`))
 				return
 			}
 
 			userID, err := uuid.Parse(userIDString)
 			if err != nil {
-				log.Printf("Error parsing UUID: %v", err)
-				utils.WriteJSON(
-					w,
-					http.StatusUnauthorized,
-					utils.ApiError{Error: "Invalid Token"},
-				)
+				fmt.Printf("Error parsing UUID: %v", err)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+
+				w.Write([]byte(`{"error": "Invalid Token"}`))
 				return
 			}
 
@@ -73,6 +66,10 @@ func JWTAuth(next http.Handler) http.Handler {
 
 func validateJWT(tokenString string) (*jwt.Token, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" { // TODO: find a better way to handle this
+		fmt.Println("JWT_SECRET not set")
+		return nil, fmt.Errorf("JWT_SECRET not set")
+	}
 
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
