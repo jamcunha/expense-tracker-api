@@ -5,6 +5,7 @@ import (
 
 	"github.com/jamcunha/expense-tracker/internal/handler"
 	"github.com/jamcunha/expense-tracker/internal/middleware"
+	"github.com/jamcunha/expense-tracker/internal/repository/budget"
 	"github.com/jamcunha/expense-tracker/internal/repository/category"
 	"github.com/jamcunha/expense-tracker/internal/repository/expense"
 	"github.com/jamcunha/expense-tracker/internal/repository/user"
@@ -25,6 +26,7 @@ func (a *App) loadV1Routes(prefix string) {
 	a.loadUserRoutes(r, "/users")
 	a.loadCategoryRoutes(r, "/categories")
 	a.loadExpenseRoutes(r, "/expenses")
+	a.loadBudgetRoutes(r, "/budgets")
 
 	a.router.Handle(prefix+"/", http.StripPrefix(prefix, r))
 }
@@ -32,7 +34,8 @@ func (a *App) loadV1Routes(prefix string) {
 func (a *App) loadUserRoutes(r *http.ServeMux, prefix string) {
 	userHandler := &handler.User{
 		Repo: &user.SqlcRepo{
-			DB: a.db,
+			DB:      a.DB,
+			Queries: a.Queries,
 		},
 	}
 
@@ -45,7 +48,8 @@ func (a *App) loadUserRoutes(r *http.ServeMux, prefix string) {
 func (a *App) loadCategoryRoutes(r *http.ServeMux, prefix string) {
 	categoryHandler := &handler.Category{
 		Repo: &category.SqlcRepo{
-			DB: a.db,
+			DB:      a.DB,
+			Queries: a.Queries,
 		},
 	}
 
@@ -60,7 +64,8 @@ func (a *App) loadCategoryRoutes(r *http.ServeMux, prefix string) {
 func (a *App) loadExpenseRoutes(r *http.ServeMux, prefix string) {
 	expenseHandler := &handler.Expense{
 		Repo: &expense.SqlcRepo{
-			DB: a.db,
+			DB:      a.DB,
+			Queries: a.Queries,
 		},
 	}
 
@@ -71,4 +76,21 @@ func (a *App) loadExpenseRoutes(r *http.ServeMux, prefix string) {
 	r.Handle("GET "+prefix+"/category/{id}", jwtMiddleware(expenseHandler.GetByCategory))
 	r.Handle("POST "+prefix, jwtMiddleware(expenseHandler.Create))
 	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(expenseHandler.DeleteByID))
+}
+
+// TODO: add a update route (PUT, PATCH)
+func (a *App) loadBudgetRoutes(r *http.ServeMux, prefix string) {
+	budgetHandler := &handler.Budget{
+		Repo: &budget.SqlcRepo{
+			DB:      a.DB,
+			Queries: a.Queries,
+		},
+	}
+
+	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f) }
+
+	r.Handle("GET "+prefix, jwtMiddleware(budgetHandler.GetAll))
+	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(budgetHandler.GetByID))
+	r.Handle("POST "+prefix, jwtMiddleware(budgetHandler.Create))
+	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(budgetHandler.DeleteByID))
 }

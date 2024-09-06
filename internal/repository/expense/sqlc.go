@@ -16,11 +16,20 @@ import (
 )
 
 type SqlcRepo struct {
-	DB *database.Queries
+	DB      *sql.DB
+	Queries *database.Queries
 }
 
 func (s *SqlcRepo) Create(ctx context.Context, expense model.Expense) error {
-	_, err := s.DB.CreateExpense(ctx, database.CreateExpenseParams{
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	qtx := s.Queries.WithTx(tx)
+
+	dbExpense, err := qtx.CreateExpense(ctx, database.CreateExpenseParams{
 		ID:          expense.ID,
 		CreatedAt:   expense.CreatedAt,
 		UpdatedAt:   expense.UpdatedAt,
@@ -29,16 +38,48 @@ func (s *SqlcRepo) Create(ctx context.Context, expense model.Expense) error {
 		CategoryID:  expense.CategoryID,
 		UserID:      expense.UserID,
 	})
+	if err != nil {
+		return err
+	}
 
-	return err
+	if err := qtx.UpdateBudgetAmount(ctx, database.UpdateBudgetAmountParams{
+		CategoryID: dbExpense.CategoryID,
+		Amount:     dbExpense.Amount,
+		StartDate:  dbExpense.CreatedAt,
+	}); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	return s.DB.DeleteExpense(ctx, id)
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	qtx := s.Queries.WithTx(tx)
+
+	dbExpense, err := qtx.DeleteExpense(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if err := qtx.UpdateBudgetAmount(ctx, database.UpdateBudgetAmountParams{
+		CategoryID: dbExpense.CategoryID,
+		Amount:     "-" + dbExpense.Amount,
+		StartDate:  dbExpense.CreatedAt,
+	}); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (s *SqlcRepo) FindByID(ctx context.Context, id uuid.UUID) (model.Expense, error) {
-	dbExpense, err := s.DB.GetExpenseById(ctx, id)
+	dbExpense, err := s.Queries.GetExpenseByID(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.Expense{}, ErrNotFound
 	} else if err != nil {
@@ -66,7 +107,7 @@ func (s *SqlcRepo) FindByCategory(
 	var err error
 
 	if page.Cursor == "" {
-		dbExpenses, err = s.DB.GetCategoryExpenses(ctx, database.GetCategoryExpensesParams{
+		dbExpenses, err = s.Queries.GetCategoryExpenses(ctx, database.GetCategoryExpensesParams{
 			CategoryID: categoryID,
 			Limit:      page.Limit,
 		})
@@ -76,7 +117,7 @@ func (s *SqlcRepo) FindByCategory(
 			return FindResult{}, err
 		}
 
-		dbExpenses, err = s.DB.GetCategoryExpensesPaged(ctx, database.GetCategoryExpensesPagedParams{
+		dbExpenses, err = s.Queries.GetCategoryExpensesPaged(ctx, database.GetCategoryExpensesPagedParams{
 			CategoryID: categoryID,
 			CreatedAt:  t,
 			ID:         id,
@@ -133,7 +174,7 @@ func (s *SqlcRepo) FindAll(
 	var err error
 
 	if page.Cursor == "" {
-		dbExpenses, err = s.DB.GetUserExpenses(ctx, database.GetUserExpensesParams{
+		dbExpenses, err = s.Queries.GetUserExpenses(ctx, database.GetUserExpensesParams{
 			UserID: userID,
 			Limit:  page.Limit,
 		})
@@ -143,7 +184,7 @@ func (s *SqlcRepo) FindAll(
 			return FindResult{}, err
 		}
 
-		dbExpenses, err = s.DB.GetUserExpensesPaged(ctx, database.GetUserExpensesPagedParams{
+		dbExpenses, err = s.Queries.GetUserExpensesPaged(ctx, database.GetUserExpensesPagedParams{
 			UserID:    userID,
 			CreatedAt: t,
 			ID:        id,

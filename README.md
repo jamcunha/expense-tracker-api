@@ -4,6 +4,12 @@
 
 TODO: write tests for API instead of testing manually with curl
 
+TODO: rewrite all deletes and updates to also use userID to make sure the user is deleting their own data
+
+TODO: return a new model when inserting instead of returning the json from the param model
+
+TODO: add on cascade delete to all tables
+
 ```
 Users {
     name,
@@ -65,4 +71,4 @@ RecurringExpenses {
 
 #### Extra ideas
 
-Check if there is an API to get data from bank account
+Check if there is an API to get data from bank accounts

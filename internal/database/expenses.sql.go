@@ -14,6 +14,7 @@ import (
 
 const createExpense = `-- name: CreateExpense :one
 
+
 INSERT INTO expenses (id, created_at, updated_at, description, amount, category_id, user_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, created_at, updated_at, description, amount, category_id, user_id
@@ -30,6 +31,13 @@ type CreateExpenseParams struct {
 }
 
 // TODO: Order expenses by created_at DESC (to test with cursor pagination)
+//
+// Intended query result:
+//
+// last expense
+// ...
+// first expense
+// TODO: add query (and route) to get all expenses in a time interval
 func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (Expense, error) {
 	row := q.db.QueryRowContext(ctx, createExpense,
 		arg.ID,
@@ -53,13 +61,23 @@ func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (E
 	return i, err
 }
 
-const deleteExpense = `-- name: DeleteExpense :exec
-DELETE FROM expenses WHERE id = $1
+const deleteExpense = `-- name: DeleteExpense :one
+DELETE FROM expenses WHERE id = $1 RETURNING id, created_at, updated_at, description, amount, category_id, user_id
 `
 
-func (q *Queries) DeleteExpense(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteExpense, id)
-	return err
+func (q *Queries) DeleteExpense(ctx context.Context, id uuid.UUID) (Expense, error) {
+	row := q.db.QueryRowContext(ctx, deleteExpense, id)
+	var i Expense
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Description,
+		&i.Amount,
+		&i.CategoryID,
+		&i.UserID,
+	)
+	return i, err
 }
 
 const getCategoryExpenses = `-- name: GetCategoryExpenses :many
@@ -154,12 +172,12 @@ func (q *Queries) GetCategoryExpensesPaged(ctx context.Context, arg GetCategoryE
 	return items, nil
 }
 
-const getExpenseById = `-- name: GetExpenseById :one
+const getExpenseByID = `-- name: GetExpenseByID :one
 SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE id = $1
 `
 
-func (q *Queries) GetExpenseById(ctx context.Context, id uuid.UUID) (Expense, error) {
-	row := q.db.QueryRowContext(ctx, getExpenseById, id)
+func (q *Queries) GetExpenseByID(ctx context.Context, id uuid.UUID) (Expense, error) {
+	row := q.db.QueryRowContext(ctx, getExpenseByID, id)
 	var i Expense
 	err := row.Scan(
 		&i.ID,
@@ -171,6 +189,50 @@ func (q *Queries) GetExpenseById(ctx context.Context, id uuid.UUID) (Expense, er
 		&i.UserID,
 	)
 	return i, err
+}
+
+const getTotalSpent = `-- name: GetTotalSpent :one
+
+SELECT CAST(SUM(amount) AS NUMERIC(10, 4)) FROM expenses
+WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+`
+
+type GetTotalSpentParams struct {
+	UserID      uuid.UUID
+	CreatedAt   time.Time
+	CreatedAt_2 time.Time
+}
+
+// NOTE: both folowing queries are private to the app, not used in the API
+func (q *Queries) GetTotalSpent(ctx context.Context, arg GetTotalSpentParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getTotalSpent, arg.UserID, arg.CreatedAt, arg.CreatedAt_2)
+	var column_1 string
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const getTotalSpentInCategory = `-- name: GetTotalSpentInCategory :one
+SELECT CAST(SUM(amount) AS NUMERIC(10, 4)) FROM expenses
+WHERE user_id = $1 AND category_id = $2 AND created_at >= $3 AND created_at <= $4
+`
+
+type GetTotalSpentInCategoryParams struct {
+	UserID      uuid.UUID
+	CategoryID  uuid.UUID
+	CreatedAt   time.Time
+	CreatedAt_2 time.Time
+}
+
+func (q *Queries) GetTotalSpentInCategory(ctx context.Context, arg GetTotalSpentInCategoryParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getTotalSpentInCategory,
+		arg.UserID,
+		arg.CategoryID,
+		arg.CreatedAt,
+		arg.CreatedAt_2,
+	)
+	var column_1 string
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const getUserExpenses = `-- name: GetUserExpenses :many

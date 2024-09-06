@@ -13,11 +13,12 @@ import (
 // TODO: Implement update
 
 type SqlcRepo struct {
-	DB *database.Queries
+	DB      *sql.DB
+	Queries *database.Queries
 }
 
 func (s *SqlcRepo) Create(ctx context.Context, user model.User) error {
-	_, err := s.DB.CreateUser(ctx, database.CreateUserParams{
+	_, err := s.Queries.CreateUser(ctx, database.CreateUserParams{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
@@ -30,11 +31,11 @@ func (s *SqlcRepo) Create(ctx context.Context, user model.User) error {
 }
 
 func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	return s.DB.DeleteUser(ctx, id)
+	return s.Queries.DeleteUser(ctx, id)
 }
 
 func (s *SqlcRepo) FindByID(ctx context.Context, id uuid.UUID) (model.User, error) {
-	dbUser, err := s.DB.GetUserByID(ctx, id)
+	dbUser, err := s.Queries.GetUserByID(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.User{}, ErrNotFound
 	} else if err != nil {
@@ -52,7 +53,7 @@ func (s *SqlcRepo) FindByID(ctx context.Context, id uuid.UUID) (model.User, erro
 }
 
 func (s *SqlcRepo) FindByEmail(ctx context.Context, email string) (model.User, error) {
-	dbUser, err := s.DB.GetUserByEmail(ctx, email)
+	dbUser, err := s.Queries.GetUserByEmail(ctx, email)
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.User{}, ErrNotFound
 	} else if err != nil {

@@ -15,8 +15,10 @@ import (
 
 type App struct {
 	router *http.ServeMux
-	db     *database.Queries
-	config Config
+
+	DB      *sql.DB
+	Queries *database.Queries
+	config  Config
 }
 
 func New(config Config) (*App, error) {
@@ -26,12 +28,11 @@ func New(config Config) (*App, error) {
 	}
 
 	app := &App{
-		db:     database.New(conn),
-		config: config,
+		DB:      conn,
+		Queries: database.New(conn),
+		config:  config,
 	}
 	app.loadV1Routes("/api/v1")
-
-	fmt.Println(app.router)
 
 	return app, nil
 }
