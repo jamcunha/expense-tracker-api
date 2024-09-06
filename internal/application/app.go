@@ -31,6 +31,8 @@ func New(config Config) (*App, error) {
 	}
 	app.loadV1Routes("/api/v1")
 
+	fmt.Println(app.router)
+
 	return app, nil
 }
 

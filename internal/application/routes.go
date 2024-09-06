@@ -1,12 +1,12 @@
 package application
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/jamcunha/expense-tracker/internal/handler"
 	"github.com/jamcunha/expense-tracker/internal/middleware"
 	"github.com/jamcunha/expense-tracker/internal/repository/category"
+	"github.com/jamcunha/expense-tracker/internal/repository/expense"
 	"github.com/jamcunha/expense-tracker/internal/repository/user"
 )
 
@@ -20,41 +20,29 @@ func (a *App) loadV1Routes(prefix string) {
 		w.Write([]byte(`{"status": "ok"}`))
 	})
 
-	if err := a.loadUserRoutes(prefix + "/users"); err != nil {
-		fmt.Println("Error loading user routes:", err)
-		return
-	}
+	r := http.NewServeMux()
 
-	if err := a.loadCategoryRoutes(prefix + "/categories"); err != nil {
-		fmt.Println("Error loading category routes:", err)
-		return
-	}
+	a.loadUserRoutes(r, "/users")
+	a.loadCategoryRoutes(r, "/categories")
+	a.loadExpenseRoutes(r, "/expenses")
+
+	a.router.Handle(prefix+"/", http.StripPrefix(prefix, r))
 }
 
-func (a *App) loadUserRoutes(prefix string) error {
-	if a.router == nil {
-		return fmt.Errorf("router not initialized")
-	}
-
+func (a *App) loadUserRoutes(r *http.ServeMux, prefix string) {
 	userHandler := &handler.User{
 		Repo: &user.SqlcRepo{
 			DB: a.db,
 		},
 	}
 
-	a.router.HandleFunc("GET "+prefix+"/{id}", userHandler.GetByID)
-	a.router.HandleFunc("POST "+prefix, userHandler.Create)
-	a.router.HandleFunc("DELETE "+prefix+"/{id}", userHandler.DeleteByID)
-	a.router.HandleFunc("POST /login", userHandler.Login) // does not use prefix
-
-	return nil
+	r.HandleFunc("GET "+prefix+"/{id}", userHandler.GetByID)
+	r.HandleFunc("POST "+prefix, userHandler.Create)
+	r.HandleFunc("DELETE "+prefix+"/{id}", userHandler.DeleteByID)
+	r.HandleFunc("POST /login", userHandler.Login) // does not use prefix
 }
 
-func (a *App) loadCategoryRoutes(prefix string) error {
-	if a.router == nil {
-		return fmt.Errorf("router not initialized")
-	}
-
+func (a *App) loadCategoryRoutes(r *http.ServeMux, prefix string) {
 	categoryHandler := &handler.Category{
 		Repo: &category.SqlcRepo{
 			DB: a.db,
@@ -63,10 +51,24 @@ func (a *App) loadCategoryRoutes(prefix string) error {
 
 	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f) }
 
-	a.router.Handle("GET "+prefix, jwtMiddleware(categoryHandler.GetAll))
-	a.router.Handle("GET "+prefix+"/{id}", jwtMiddleware(categoryHandler.GetByID))
-	a.router.Handle("POST "+prefix, jwtMiddleware(categoryHandler.Create))
-	a.router.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(categoryHandler.DeleteByID))
+	r.Handle("GET "+prefix, jwtMiddleware(categoryHandler.GetAll))
+	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(categoryHandler.GetByID))
+	r.Handle("POST "+prefix, jwtMiddleware(categoryHandler.Create))
+	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(categoryHandler.DeleteByID))
+}
 
-	return nil
+func (a *App) loadExpenseRoutes(r *http.ServeMux, prefix string) {
+	expenseHandler := &handler.Expense{
+		Repo: &expense.SqlcRepo{
+			DB: a.db,
+		},
+	}
+
+	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f) }
+
+	r.Handle("GET "+prefix, jwtMiddleware(expenseHandler.GetAll))
+	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(expenseHandler.GetByID))
+	r.Handle("GET "+prefix+"/category/{id}", jwtMiddleware(expenseHandler.GetByCategory))
+	r.Handle("POST "+prefix, jwtMiddleware(expenseHandler.Create))
+	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(expenseHandler.DeleteByID))
 }

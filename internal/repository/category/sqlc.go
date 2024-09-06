@@ -108,7 +108,6 @@ func (s *SqlcRepo) FindAll(
 
 	cursor := ""
 	if len(categories) == int(page.Limit) {
-		fmt.Println("here:", len(categories), page.Limit)
 		cursor = encodeCursor(
 			dbCategories[len(dbCategories)-1].CreatedAt,
 			dbCategories[len(dbCategories)-1].ID,

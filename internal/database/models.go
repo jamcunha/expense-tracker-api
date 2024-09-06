@@ -18,6 +18,16 @@ type Category struct {
 	UserID    uuid.UUID
 }
 
+type Expense struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Description string
+	Amount      string
+	CategoryID  uuid.UUID
+	UserID      uuid.UUID
+}
+
 type User struct {
 	ID        uuid.UUID
 	CreatedAt time.Time

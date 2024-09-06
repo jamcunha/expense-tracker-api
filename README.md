@@ -17,21 +17,12 @@ Expenses {
     title
     amount,
     date,
-    category, // add an FK or let user have it's own categories
+    category, // add an FK
     user, // add user as a FK
 }
 ```
 
 ```
-Categories {
-    Grocery,
-    Rent,
-    Utilities,
-    Entertainment,
-    Other,
-}
-
-// explore this way
 Categories {
     name,
     user, // add user as FK
