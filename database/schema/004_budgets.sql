@@ -12,8 +12,8 @@ CREATE TABLE budgets (
     goal NUMERIC(10, 4) NOT NULL,
     start_date TIMESTAMP NOT NULL,
     end_date TIMESTAMP NOT NULL,
-    user_id UUID NOT NULL REFERENCES users(id),
-    category_id UUID NOT NULL REFERENCES categories(id)
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE -- NOTE: here might be better to set NULL instead of deleting
 
     CONSTRAINT date_check CHECK (start_date < end_date)
 );

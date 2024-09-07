@@ -6,7 +6,7 @@ CREATE TABLE categories (
     updated_at TIMESTAMP NOT NULL,
 
     name VARCHAR(255) NOT NULL,
-    user_id UUID NOT NULL REFERENCES users(id)
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_categories_pagination ON categories (created_at, id);
