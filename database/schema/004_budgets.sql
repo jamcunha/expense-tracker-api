@@ -1,4 +1,5 @@
 -- TODO: check on cascade delete on all tables
+-- TODO: add a check constraint start_date < end_date
 
 -- +goose Up
 
@@ -13,6 +14,8 @@ CREATE TABLE budgets (
     end_date TIMESTAMP NOT NULL,
     user_id UUID NOT NULL REFERENCES users(id),
     category_id UUID NOT NULL REFERENCES categories(id)
+
+    CONSTRAINT date_check CHECK (start_date < end_date)
 );
 
 CREATE INDEX id_budgets_pagination ON expenses (created_at, id);

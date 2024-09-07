@@ -1,11 +1,3 @@
--- TODO: Order expenses by created_at DESC (to test with cursor pagination)
---
--- Intended query result:
---
--- last expense
--- ...
--- first expense
-
 -- TODO: add query (and route) to get all expenses in a time interval
 
 -- name: CreateExpense :one
@@ -18,24 +10,24 @@ DELETE FROM expenses WHERE id = $1 RETURNING *;
 
 -- name: GetUserExpensesPaged :many
 SELECT * FROM expenses WHERE user_id = $1
-AND created_at >= $2 AND id < $3
-ORDER BY created_at ASC, id DESC
+AND created_at <= $2 AND id < $3
+ORDER BY created_at DESC, id DESC
 LIMIT $4;
 
 -- name: GetUserExpenses :many
 SELECT * FROM expenses WHERE user_id = $1
-ORDER BY created_at ASC, id DESC
+ORDER BY created_at DESC, id DESC
 LIMIT $2;
 
 -- name: GetCategoryExpensesPaged :many
 SELECT * FROM expenses WHERE category_id = $1
-AND created_at >= $2 AND id < $3
-ORDER BY created_at ASC, id DESC
+AND created_at <= $2 AND id < $3
+ORDER BY created_at DESC, id DESC
 LIMIT $4;
 
 -- name: GetCategoryExpenses :many
 SELECT * FROM expenses WHERE category_id = $1
-ORDER BY created_at ASC, id DESC
+ORDER BY created_at DESC, id DESC
 LIMIT $2;
 
 -- name: GetExpenseByID :one

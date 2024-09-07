@@ -195,7 +195,7 @@ func (h *Expense) Create(w http.ResponseWriter, r *http.Request) {
 		UserID:      userID,
 	}
 
-	err := h.Repo.Create(r.Context(), e)
+	e, err := h.Repo.Create(r.Context(), e)
 	if err != nil {
 		fmt.Println("failed to insert:", err)
 		w.WriteHeader(http.StatusInternalServerError)

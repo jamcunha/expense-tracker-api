@@ -6,9 +6,9 @@ TODO: write tests for API instead of testing manually with curl
 
 TODO: rewrite all deletes and updates to also use userID to make sure the user is deleting their own data
 
-TODO: return a new model when inserting instead of returning the json from the param model
-
 TODO: add on cascade delete to all tables
+
+TODO: uniformize the errors log (and what to send to the client)
 
 ```
 Users {

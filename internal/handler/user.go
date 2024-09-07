@@ -84,7 +84,7 @@ func (h *User) Create(w http.ResponseWriter, r *http.Request) {
 		Password:  string(encryptedPassword),
 	}
 
-	err = h.Repo.Create(r.Context(), u)
+	u, err = h.Repo.Create(r.Context(), u)
 	if err != nil {
 		fmt.Println("failed to insert:", err)
 		w.WriteHeader(http.StatusInternalServerError)

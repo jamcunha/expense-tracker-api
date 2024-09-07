@@ -21,7 +21,7 @@ type SqlcRepo struct {
 	Queries *database.Queries
 }
 
-func (s *SqlcRepo) Create(ctx context.Context, category model.Category) error {
+func (s *SqlcRepo) Create(ctx context.Context, category model.Category) (model.Category, error) {
 	_, err := s.Queries.CreateCategory(ctx, database.CreateCategoryParams{
 		ID:        category.ID,
 		CreatedAt: category.CreatedAt,
@@ -30,7 +30,7 @@ func (s *SqlcRepo) Create(ctx context.Context, category model.Category) error {
 		UserID:    category.UserID,
 	})
 
-	return err
+	return category, err
 }
 
 func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {

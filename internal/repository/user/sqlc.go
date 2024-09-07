@@ -17,7 +17,7 @@ type SqlcRepo struct {
 	Queries *database.Queries
 }
 
-func (s *SqlcRepo) Create(ctx context.Context, user model.User) error {
+func (s *SqlcRepo) Create(ctx context.Context, user model.User) (model.User, error) {
 	_, err := s.Queries.CreateUser(ctx, database.CreateUserParams{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
@@ -27,7 +27,7 @@ func (s *SqlcRepo) Create(ctx context.Context, user model.User) error {
 		Password:  user.Password,
 	})
 
-	return err
+	return user, err
 }
 
 func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {

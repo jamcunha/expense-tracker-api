@@ -20,7 +20,6 @@ type SqlcRepo struct {
 	Queries *database.Queries
 }
 
-// TODO: add tx
 func (s *SqlcRepo) Create(ctx context.Context, budget model.Budget) (model.Budget, error) {
 	tx, err := s.DB.Begin()
 	if err != nil {

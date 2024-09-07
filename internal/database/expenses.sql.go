@@ -30,13 +30,6 @@ type CreateExpenseParams struct {
 	UserID      uuid.UUID
 }
 
-// TODO: Order expenses by created_at DESC (to test with cursor pagination)
-//
-// Intended query result:
-//
-// last expense
-// ...
-// first expense
 // TODO: add query (and route) to get all expenses in a time interval
 func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (Expense, error) {
 	row := q.db.QueryRowContext(ctx, createExpense,
@@ -82,7 +75,7 @@ func (q *Queries) DeleteExpense(ctx context.Context, id uuid.UUID) (Expense, err
 
 const getCategoryExpenses = `-- name: GetCategoryExpenses :many
 SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE category_id = $1
-ORDER BY created_at ASC, id DESC
+ORDER BY created_at DESC, id DESC
 LIMIT $2
 `
 
@@ -124,8 +117,8 @@ func (q *Queries) GetCategoryExpenses(ctx context.Context, arg GetCategoryExpens
 
 const getCategoryExpensesPaged = `-- name: GetCategoryExpensesPaged :many
 SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE category_id = $1
-AND created_at >= $2 AND id < $3
-ORDER BY created_at ASC, id DESC
+AND created_at <= $2 AND id < $3
+ORDER BY created_at DESC, id DESC
 LIMIT $4
 `
 
@@ -237,7 +230,7 @@ func (q *Queries) GetTotalSpentInCategory(ctx context.Context, arg GetTotalSpent
 
 const getUserExpenses = `-- name: GetUserExpenses :many
 SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE user_id = $1
-ORDER BY created_at ASC, id DESC
+ORDER BY created_at DESC, id DESC
 LIMIT $2
 `
 
@@ -279,8 +272,8 @@ func (q *Queries) GetUserExpenses(ctx context.Context, arg GetUserExpensesParams
 
 const getUserExpensesPaged = `-- name: GetUserExpensesPaged :many
 SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE user_id = $1
-AND created_at >= $2 AND id < $3
-ORDER BY created_at ASC, id DESC
+AND created_at <= $2 AND id < $3
+ORDER BY created_at DESC, id DESC
 LIMIT $4
 `
 

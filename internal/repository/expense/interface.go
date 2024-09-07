@@ -9,7 +9,7 @@ import (
 )
 
 type Repo interface {
-	Create(ctx context.Context, expense model.Expense) error
+	Create(ctx context.Context, expense model.Expense) (model.Expense, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	FindByID(ctx context.Context, id uuid.UUID) (model.Expense, error)
 	FindByCategory(ctx context.Context, categoryID uuid.UUID, page FindAllPage) (FindResult, error)

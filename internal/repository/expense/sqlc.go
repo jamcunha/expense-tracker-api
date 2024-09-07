@@ -20,10 +20,10 @@ type SqlcRepo struct {
 	Queries *database.Queries
 }
 
-func (s *SqlcRepo) Create(ctx context.Context, expense model.Expense) error {
+func (s *SqlcRepo) Create(ctx context.Context, expense model.Expense) (model.Expense, error) {
 	tx, err := s.DB.Begin()
 	if err != nil {
-		return err
+		return model.Expense{}, err
 	}
 	defer tx.Rollback()
 
@@ -39,7 +39,7 @@ func (s *SqlcRepo) Create(ctx context.Context, expense model.Expense) error {
 		UserID:      expense.UserID,
 	})
 	if err != nil {
-		return err
+		return model.Expense{}, err
 	}
 
 	if err := qtx.UpdateBudgetAmount(ctx, database.UpdateBudgetAmountParams{
@@ -47,10 +47,10 @@ func (s *SqlcRepo) Create(ctx context.Context, expense model.Expense) error {
 		Amount:     dbExpense.Amount,
 		StartDate:  dbExpense.CreatedAt,
 	}); err != nil {
-		return err
+		return model.Expense{}, err
 	}
 
-	return tx.Commit()
+	return expense, tx.Commit()
 }
 
 func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {
