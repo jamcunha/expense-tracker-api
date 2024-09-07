@@ -6,7 +6,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: DeleteExpense :one
-DELETE FROM expenses WHERE id = $1 RETURNING *;
+DELETE FROM expenses WHERE id = $1 AND user_id = $2 RETURNING *;
 
 -- name: GetUserExpensesPaged :many
 SELECT * FROM expenses WHERE user_id = $1
@@ -20,20 +20,20 @@ ORDER BY created_at DESC, id DESC
 LIMIT $2;
 
 -- name: GetCategoryExpensesPaged :many
-SELECT * FROM expenses WHERE category_id = $1
-AND created_at <= $2 AND id < $3
+SELECT * FROM expenses WHERE category_id = $1 AND user_id = $2
+AND created_at <= $3 AND id < $4
 ORDER BY created_at DESC, id DESC
-LIMIT $4;
+LIMIT $5;
 
 -- name: GetCategoryExpenses :many
-SELECT * FROM expenses WHERE category_id = $1
+SELECT * FROM expenses WHERE category_id = $1 AND user_id = $2
 ORDER BY created_at DESC, id DESC
-LIMIT $2;
+LIMIT $3;
 
 -- name: GetExpenseByID :one
-SELECT * FROM expenses WHERE id = $1;
+SELECT * FROM expenses WHERE id = $1 AND user_id = $2;
 
--- NOTE: both folowing queries are private to the app, not used in the API
+-- NOTE: both folowing queries are private to the API, not used by the client (might be made public in the future)
 
 -- name: GetTotalSpent :one
 SELECT CAST(SUM(amount) AS NUMERIC(10, 4)) FROM expenses

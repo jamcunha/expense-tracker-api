@@ -31,7 +31,9 @@ func (s *SqlcRepo) Create(ctx context.Context, user model.User) (model.User, err
 }
 
 func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	return s.Queries.DeleteUser(ctx, id)
+	_, err := s.Queries.DeleteUser(ctx, id)
+
+	return err
 }
 
 func (s *SqlcRepo) FindByID(ctx context.Context, id uuid.UUID) (model.User, error) {

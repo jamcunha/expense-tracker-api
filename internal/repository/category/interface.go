@@ -10,8 +10,8 @@ import (
 
 type Repo interface {
 	Create(ctx context.Context, category model.Category) (model.Category, error)
-	Delete(ctx context.Context, id uuid.UUID) error
-	FindByID(ctx context.Context, id uuid.UUID) (model.Category, error)
+	Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
+	FindByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (model.Category, error)
 	FindAll(ctx context.Context, userID uuid.UUID, page FindAllPage) (FindResult, error)
 }
 

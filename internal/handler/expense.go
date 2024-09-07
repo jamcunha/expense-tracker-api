@@ -26,7 +26,9 @@ func (h *Expense) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	e, err := h.Repo.FindByID(r.Context(), id)
+	userID := r.Context().Value("userID").(uuid.UUID)
+
+	e, err := h.Repo.FindByID(r.Context(), id, userID)
 	if errors.Is(err, expense.ErrNotFound) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -132,7 +134,9 @@ func (h *Expense) GetByCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expenses, err := h.Repo.FindByCategory(r.Context(), categoryID, expense.FindAllPage{
+	userID := r.Context().Value("userID").(uuid.UUID)
+
+	expenses, err := h.Repo.FindByCategory(r.Context(), categoryID, userID, expense.FindAllPage{
 		Limit:  int32(limit),
 		Cursor: cursor,
 	})
@@ -223,7 +227,9 @@ func (h *Expense) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.Repo.Delete(r.Context(), id)
+	userID := r.Context().Value("userID").(uuid.UUID)
+
+	err = h.Repo.Delete(r.Context(), id, userID)
 	if err != nil {
 		fmt.Println("failed to delete:", err)
 		w.WriteHeader(http.StatusInternalServerError)

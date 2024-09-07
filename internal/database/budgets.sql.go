@@ -57,21 +57,43 @@ func (q *Queries) CreateBudget(ctx context.Context, arg CreateBudgetParams) (Bud
 	return i, err
 }
 
-const deleteBudget = `-- name: DeleteBudget :exec
-DELETE FROM budgets WHERE id = $1
+const deleteBudget = `-- name: DeleteBudget :one
+DELETE FROM budgets WHERE id = $1 AND user_id = $2 RETURNING id, created_at, updated_at, amount, goal, start_date, end_date, user_id, category_id
 `
 
-func (q *Queries) DeleteBudget(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteBudget, id)
-	return err
+type DeleteBudgetParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) DeleteBudget(ctx context.Context, arg DeleteBudgetParams) (Budget, error) {
+	row := q.db.QueryRowContext(ctx, deleteBudget, arg.ID, arg.UserID)
+	var i Budget
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Amount,
+		&i.Goal,
+		&i.StartDate,
+		&i.EndDate,
+		&i.UserID,
+		&i.CategoryID,
+	)
+	return i, err
 }
 
 const getBudgetByID = `-- name: GetBudgetByID :one
-SELECT id, created_at, updated_at, amount, goal, start_date, end_date, user_id, category_id FROM budgets WHERE id = $1
+SELECT id, created_at, updated_at, amount, goal, start_date, end_date, user_id, category_id FROM budgets WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) GetBudgetByID(ctx context.Context, id uuid.UUID) (Budget, error) {
-	row := q.db.QueryRowContext(ctx, getBudgetByID, id)
+type GetBudgetByIDParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) GetBudgetByID(ctx context.Context, arg GetBudgetByIDParams) (Budget, error) {
+	row := q.db.QueryRowContext(ctx, getBudgetByID, arg.ID, arg.UserID)
 	var i Budget
 	err := row.Scan(
 		&i.ID,
@@ -194,6 +216,8 @@ type UpdateBudgetAmountParams struct {
 	StartDate  time.Time
 }
 
+// Since UpdateBudgetAmount is only called by the API, there is no need to
+// check if the user is the owner of the budget since the API already does that
 func (q *Queries) UpdateBudgetAmount(ctx context.Context, arg UpdateBudgetAmountParams) error {
 	_, err := q.db.ExecContext(ctx, updateBudgetAmount, arg.CategoryID, arg.Amount, arg.StartDate)
 	return err

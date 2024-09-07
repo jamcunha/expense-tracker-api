@@ -45,21 +45,39 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 	return i, err
 }
 
-const deleteCategory = `-- name: DeleteCategory :exec
-DELETE FROM categories WHERE id = $1
+const deleteCategory = `-- name: DeleteCategory :one
+DELETE FROM categories WHERE id = $1 AND user_id = $2 RETURNING id, created_at, updated_at, name, user_id
 `
 
-func (q *Queries) DeleteCategory(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteCategory, id)
-	return err
+type DeleteCategoryParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) DeleteCategory(ctx context.Context, arg DeleteCategoryParams) (Category, error) {
+	row := q.db.QueryRowContext(ctx, deleteCategory, arg.ID, arg.UserID)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.UserID,
+	)
+	return i, err
 }
 
 const getCategoryByID = `-- name: GetCategoryByID :one
-SELECT id, created_at, updated_at, name, user_id FROM categories WHERE id = $1
+SELECT id, created_at, updated_at, name, user_id FROM categories WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error) {
-	row := q.db.QueryRowContext(ctx, getCategoryByID, id)
+type GetCategoryByIDParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) GetCategoryByID(ctx context.Context, arg GetCategoryByIDParams) (Category, error) {
+	row := q.db.QueryRowContext(ctx, getCategoryByID, arg.ID, arg.UserID)
 	var i Category
 	err := row.Scan(
 		&i.ID,

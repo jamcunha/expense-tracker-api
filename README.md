@@ -4,68 +4,15 @@
 
 TODO: write tests for API instead of testing manually with curl
 
-TODO: rewrite all deletes and updates to also use userID to make sure the user is deleting their own data
+TODO: add expiration date of the JWT to the login response (learn better how to handle JWT)
 
 TODO: uniformize the errors log (and what to send to the client)
 
-```
-Users {
-    name,
-    password,
-    email,
-}
-```
+TODO?: return the deleted model
 
-```
-Expenses {
-    title
-    amount,
-    date,
-    category, // add an FK
-    user, // add user as a FK
-}
-```
+TODO: add some kind of attempt limit to the login
 
-```
-Categories {
-    name,
-    user, // add user as FK
-}
-```
-
-```
-Budgets {
-    amount,
-    start_date,
-    end_date,
-    user, // add user as a FK
-    category, // add category as a FK
-}
-```
-
-Below are ideas for future features
-
-```
-Frequencies {
-    daily,
-    weekly,
-    monthly,
-    yearly,
-}
-```
-
-```
-// maybe add a isPayed tracker
-RecurringExpenses {
-    title,
-    amount,
-    start_date,
-    end_date,
-    frequency, // add frequency as a FK
-    user, // add user as a FK
-    category, // add category as a FK
-}
-```
+TODO: add documentation [swaggo/swag](https://github.com/swaggo/swag)
 
 #### Extra ideas
 

@@ -14,7 +14,6 @@ import (
 
 const createExpense = `-- name: CreateExpense :one
 
-
 INSERT INTO expenses (id, created_at, updated_at, description, amount, category_id, user_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, created_at, updated_at, description, amount, category_id, user_id
@@ -55,11 +54,16 @@ func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (E
 }
 
 const deleteExpense = `-- name: DeleteExpense :one
-DELETE FROM expenses WHERE id = $1 RETURNING id, created_at, updated_at, description, amount, category_id, user_id
+DELETE FROM expenses WHERE id = $1 AND user_id = $2 RETURNING id, created_at, updated_at, description, amount, category_id, user_id
 `
 
-func (q *Queries) DeleteExpense(ctx context.Context, id uuid.UUID) (Expense, error) {
-	row := q.db.QueryRowContext(ctx, deleteExpense, id)
+type DeleteExpenseParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) DeleteExpense(ctx context.Context, arg DeleteExpenseParams) (Expense, error) {
+	row := q.db.QueryRowContext(ctx, deleteExpense, arg.ID, arg.UserID)
 	var i Expense
 	err := row.Scan(
 		&i.ID,
@@ -74,18 +78,19 @@ func (q *Queries) DeleteExpense(ctx context.Context, id uuid.UUID) (Expense, err
 }
 
 const getCategoryExpenses = `-- name: GetCategoryExpenses :many
-SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE category_id = $1
+SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE category_id = $1 AND user_id = $2
 ORDER BY created_at DESC, id DESC
-LIMIT $2
+LIMIT $3
 `
 
 type GetCategoryExpensesParams struct {
 	CategoryID uuid.UUID
+	UserID     uuid.UUID
 	Limit      int32
 }
 
 func (q *Queries) GetCategoryExpenses(ctx context.Context, arg GetCategoryExpensesParams) ([]Expense, error) {
-	rows, err := q.db.QueryContext(ctx, getCategoryExpenses, arg.CategoryID, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, getCategoryExpenses, arg.CategoryID, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -116,14 +121,15 @@ func (q *Queries) GetCategoryExpenses(ctx context.Context, arg GetCategoryExpens
 }
 
 const getCategoryExpensesPaged = `-- name: GetCategoryExpensesPaged :many
-SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE category_id = $1
-AND created_at <= $2 AND id < $3
+SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE category_id = $1 AND user_id = $2
+AND created_at <= $3 AND id < $4
 ORDER BY created_at DESC, id DESC
-LIMIT $4
+LIMIT $5
 `
 
 type GetCategoryExpensesPagedParams struct {
 	CategoryID uuid.UUID
+	UserID     uuid.UUID
 	CreatedAt  time.Time
 	ID         uuid.UUID
 	Limit      int32
@@ -132,6 +138,7 @@ type GetCategoryExpensesPagedParams struct {
 func (q *Queries) GetCategoryExpensesPaged(ctx context.Context, arg GetCategoryExpensesPagedParams) ([]Expense, error) {
 	rows, err := q.db.QueryContext(ctx, getCategoryExpensesPaged,
 		arg.CategoryID,
+		arg.UserID,
 		arg.CreatedAt,
 		arg.ID,
 		arg.Limit,
@@ -166,11 +173,16 @@ func (q *Queries) GetCategoryExpensesPaged(ctx context.Context, arg GetCategoryE
 }
 
 const getExpenseByID = `-- name: GetExpenseByID :one
-SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE id = $1
+SELECT id, created_at, updated_at, description, amount, category_id, user_id FROM expenses WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) GetExpenseByID(ctx context.Context, id uuid.UUID) (Expense, error) {
-	row := q.db.QueryRowContext(ctx, getExpenseByID, id)
+type GetExpenseByIDParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) GetExpenseByID(ctx context.Context, arg GetExpenseByIDParams) (Expense, error) {
+	row := q.db.QueryRowContext(ctx, getExpenseByID, arg.ID, arg.UserID)
 	var i Expense
 	err := row.Scan(
 		&i.ID,
@@ -196,7 +208,7 @@ type GetTotalSpentParams struct {
 	CreatedAt_2 time.Time
 }
 
-// NOTE: both folowing queries are private to the app, not used in the API
+// NOTE: both folowing queries are private to the API, not used by the client (might be made public in the future)
 func (q *Queries) GetTotalSpent(ctx context.Context, arg GetTotalSpentParams) (string, error) {
 	row := q.db.QueryRowContext(ctx, getTotalSpent, arg.UserID, arg.CreatedAt, arg.CreatedAt_2)
 	var column_1 string

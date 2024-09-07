@@ -53,7 +53,7 @@ func (s *SqlcRepo) Create(ctx context.Context, expense model.Expense) (model.Exp
 	return expense, tx.Commit()
 }
 
-func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
 	tx, err := s.DB.Begin()
 	if err != nil {
 		return err
@@ -62,7 +62,10 @@ func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {
 
 	qtx := s.Queries.WithTx(tx)
 
-	dbExpense, err := qtx.DeleteExpense(ctx, id)
+	dbExpense, err := qtx.DeleteExpense(ctx, database.DeleteExpenseParams{
+		ID:     id,
+		UserID: userID,
+	})
 	if err != nil {
 		return err
 	}
@@ -78,8 +81,15 @@ func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	return tx.Commit()
 }
 
-func (s *SqlcRepo) FindByID(ctx context.Context, id uuid.UUID) (model.Expense, error) {
-	dbExpense, err := s.Queries.GetExpenseByID(ctx, id)
+func (s *SqlcRepo) FindByID(
+	ctx context.Context,
+	id uuid.UUID,
+	userID uuid.UUID,
+) (model.Expense, error) {
+	dbExpense, err := s.Queries.GetExpenseByID(ctx, database.GetExpenseByIDParams{
+		ID:     id,
+		UserID: userID,
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.Expense{}, ErrNotFound
 	} else if err != nil {
@@ -101,6 +111,7 @@ func (s *SqlcRepo) FindByID(ctx context.Context, id uuid.UUID) (model.Expense, e
 func (s *SqlcRepo) FindByCategory(
 	ctx context.Context,
 	categoryID uuid.UUID,
+	userID uuid.UUID,
 	page FindAllPage,
 ) (FindResult, error) {
 	var dbExpenses []database.Expense
@@ -109,6 +120,7 @@ func (s *SqlcRepo) FindByCategory(
 	if page.Cursor == "" {
 		dbExpenses, err = s.Queries.GetCategoryExpenses(ctx, database.GetCategoryExpensesParams{
 			CategoryID: categoryID,
+			UserID:     userID,
 			Limit:      page.Limit,
 		})
 	} else {
@@ -119,6 +131,7 @@ func (s *SqlcRepo) FindByCategory(
 
 		dbExpenses, err = s.Queries.GetCategoryExpensesPaged(ctx, database.GetCategoryExpensesPagedParams{
 			CategoryID: categoryID,
+			UserID:     userID,
 			CreatedAt:  t,
 			ID:         id,
 			Limit:      page.Limit,

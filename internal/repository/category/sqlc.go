@@ -33,12 +33,24 @@ func (s *SqlcRepo) Create(ctx context.Context, category model.Category) (model.C
 	return category, err
 }
 
-func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	return s.Queries.DeleteCategory(ctx, id)
+func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
+	_, err := s.Queries.DeleteCategory(ctx, database.DeleteCategoryParams{
+		ID:     id,
+		UserID: userID,
+	})
+
+	return err
 }
 
-func (s *SqlcRepo) FindByID(ctx context.Context, id uuid.UUID) (model.Category, error) {
-	dbCategory, err := s.Queries.GetCategoryByID(ctx, id)
+func (s *SqlcRepo) FindByID(
+	ctx context.Context,
+	id uuid.UUID,
+	userID uuid.UUID,
+) (model.Category, error) {
+	dbCategory, err := s.Queries.GetCategoryByID(ctx, database.GetCategoryByIDParams{
+		ID:     id,
+		UserID: userID,
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.Category{}, ErrNotFound
 	} else if err != nil {
