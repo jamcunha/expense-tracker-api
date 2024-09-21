@@ -30,10 +30,23 @@ func (s *SqlcRepo) Create(ctx context.Context, user model.User) (model.User, err
 	return user, err
 }
 
-func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	_, err := s.Queries.DeleteUser(ctx, id)
+func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID) (model.User, error) {
+	dbUser, err := s.Queries.DeleteUser(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.User{}, ErrNotFound
+	} else if err != nil {
+		return model.User{}, err
+	}
 
-	return err
+	return model.User{
+		ID:        dbUser.ID,
+		CreatedAt: dbUser.CreatedAt,
+		UpdatedAt: dbUser.UpdatedAt,
+
+		Name:     dbUser.Name,
+		Email:    dbUser.Email,
+		Password: dbUser.Password,
+	}, nil
 }
 
 func (s *SqlcRepo) FindByID(ctx context.Context, id uuid.UUID) (model.User, error) {

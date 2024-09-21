@@ -8,11 +8,7 @@ TODO: add expiration date of the JWT to the login response (learn better how to 
 
 TODO: uniformize the errors log (and what to send to the client)
 
-TODO?: return the deleted model
-
 TODO: add some kind of attempt limit to the login
-
-TODO: add documentation [swaggo/swag](https://github.com/swaggo/swag)
 
 #### Extra ideas
 

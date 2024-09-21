@@ -10,12 +10,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jamcunha/expense-tracker/internal/model"
-	"github.com/jamcunha/expense-tracker/internal/repository/expense"
+	repo "github.com/jamcunha/expense-tracker/internal/repository/expense"
 	"github.com/shopspring/decimal"
 )
 
 type Expense struct {
-	Repo expense.Repo
+	Repo repo.Repo
 }
 
 func (h *Expense) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +29,7 @@ func (h *Expense) GetByID(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(uuid.UUID)
 
 	e, err := h.Repo.FindByID(r.Context(), id, userID)
-	if errors.Is(err, expense.ErrNotFound) {
+	if errors.Is(err, repo.ErrNotFound) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -73,11 +73,11 @@ func (h *Expense) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	expenses, err := h.Repo.FindAll(r.Context(), userID, expense.FindAllPage{
+	expenses, err := h.Repo.FindAll(r.Context(), userID, repo.FindAllPage{
 		Limit:  int32(limit),
 		Cursor: cursor,
 	})
-	if errors.Is(err, expense.ErrNotFound) {
+	if errors.Is(err, repo.ErrNotFound) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -136,11 +136,11 @@ func (h *Expense) GetByCategory(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	expenses, err := h.Repo.FindByCategory(r.Context(), categoryID, userID, expense.FindAllPage{
+	expenses, err := h.Repo.FindByCategory(r.Context(), categoryID, userID, repo.FindAllPage{
 		Limit:  int32(limit),
 		Cursor: cursor,
 	})
-	if errors.Is(err, expense.ErrNotFound) {
+	if errors.Is(err, repo.ErrNotFound) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -229,12 +229,28 @@ func (h *Expense) DeleteByID(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	err = h.Repo.Delete(r.Context(), id, userID)
-	if err != nil {
+	expense, err := h.Repo.Delete(r.Context(), id, userID)
+	if errors.Is(err, repo.ErrNotFound) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+
+		w.Write([]byte(`{"error": "Expense does not exist"}`))
+		return
+	} else if err != nil {
 		fmt.Println("failed to delete:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	res, err := json.Marshal(expense)
+	if err != nil {
+		fmt.Println("failed to marshal:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	w.Write(res)
 }

@@ -11,12 +11,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jamcunha/expense-tracker/internal/model"
-	"github.com/jamcunha/expense-tracker/internal/repository/user"
+	repo "github.com/jamcunha/expense-tracker/internal/repository/user"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
-	Repo user.Repo
+	Repo repo.Repo
 }
 
 func (h *User) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +28,7 @@ func (h *User) GetByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u, err := h.Repo.FindByID(r.Context(), id)
-	if errors.Is(err, user.ErrNotFound) {
+	if errors.Is(err, repo.ErrNotFound) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -112,14 +112,31 @@ func (h *User) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.Repo.Delete(r.Context(), id)
+	user, err := h.Repo.Delete(r.Context(), id)
+	if errors.Is(err, repo.ErrNotFound) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+
+		w.Write([]byte(`{"error": "User does not exist"}`))
+		return
+	}
 	if err != nil {
 		fmt.Println("failed to delete:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	res, err := json.Marshal(user)
+	if err != nil {
+		fmt.Println("failed to marshal:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	w.Write(res)
 }
 
 func (h *User) Login(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +151,7 @@ func (h *User) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u, err := h.Repo.FindByEmail(r.Context(), body.Email)
-	if errors.Is(err, user.ErrNotFound) {
+	if errors.Is(err, repo.ErrNotFound) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 

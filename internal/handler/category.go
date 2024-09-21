@@ -10,11 +10,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jamcunha/expense-tracker/internal/model"
-	"github.com/jamcunha/expense-tracker/internal/repository/category"
+	repo "github.com/jamcunha/expense-tracker/internal/repository/category"
 )
 
 type Category struct {
-	Repo category.Repo
+	Repo repo.Repo
 }
 
 func (h *Category) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +28,7 @@ func (h *Category) GetByID(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(uuid.UUID)
 
 	c, err := h.Repo.FindByID(r.Context(), id, userID)
-	if errors.Is(err, category.ErrNotFound) {
+	if errors.Is(err, repo.ErrNotFound) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -71,11 +71,11 @@ func (h *Category) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	categories, err := h.Repo.FindAll(r.Context(), userID, category.FindAllPage{
+	categories, err := h.Repo.FindAll(r.Context(), userID, repo.FindAllPage{
 		Limit:  int32(limit),
 		Cursor: cursor,
 	})
-	if errors.Is(err, category.ErrNotFound) {
+	if errors.Is(err, repo.ErrNotFound) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -159,12 +159,28 @@ func (h *Category) DeleteByID(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	err = h.Repo.Delete(r.Context(), id, userID)
-	if err != nil {
+	user, err := h.Repo.Delete(r.Context(), id, userID)
+	if errors.Is(err, repo.ErrNotFound) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+
+		w.Write([]byte(`{"error": "Category does not exist"}`))
+		return
+	} else if err != nil {
 		fmt.Println("failed to delete:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	res, err := json.Marshal(user)
+	if err != nil {
+		fmt.Println("failed to marshal:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	w.Write(res)
 }

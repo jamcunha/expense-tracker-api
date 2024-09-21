@@ -64,13 +64,34 @@ func (s *SqlcRepo) Create(ctx context.Context, budget model.Budget) (model.Budge
 	return budget, tx.Commit()
 }
 
-func (s *SqlcRepo) Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
-	_, err := s.Queries.DeleteBudget(ctx, database.DeleteBudgetParams{
+func (s *SqlcRepo) Delete(
+	ctx context.Context,
+	id uuid.UUID,
+	userID uuid.UUID,
+) (model.Budget, error) {
+	dbBudget, err := s.Queries.DeleteBudget(ctx, database.DeleteBudgetParams{
 		ID:     id,
 		UserID: userID,
 	})
 
-	return err
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Budget{}, ErrNotFound
+	} else if err != nil {
+		return model.Budget{}, err
+	}
+
+	return model.Budget{
+		ID:        dbBudget.ID,
+		CreatedAt: dbBudget.CreatedAt,
+		UpdatedAt: dbBudget.UpdatedAt,
+
+		Amount:     decimal.RequireFromString(dbBudget.Amount),
+		Goal:       decimal.RequireFromString(dbBudget.Goal),
+		StartDate:  dbBudget.StartDate,
+		EndDate:    dbBudget.EndDate,
+		UserID:     dbBudget.UserID,
+		CategoryID: dbBudget.CategoryID,
+	}, nil
 }
 
 func (s *SqlcRepo) FindByID(

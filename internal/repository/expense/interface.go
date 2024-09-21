@@ -10,7 +10,7 @@ import (
 
 type Repo interface {
 	Create(ctx context.Context, expense model.Expense) (model.Expense, error)
-	Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
+	Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) (model.Expense, error)
 	FindByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (model.Expense, error)
 	FindByCategory(
 		ctx context.Context,
