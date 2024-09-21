@@ -3,6 +3,7 @@ package application
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 // NOTE: for now database options are just pointers (nil if option is not used).
@@ -25,6 +26,16 @@ func LoadConfig() (Config, error) {
 	// preferably it should be added to Config
 	if _, exists := os.LookupEnv("JWT_SECRET"); !exists {
 		return Config{}, fmt.Errorf("Environment variable JWT_SECRET must be set")
+	}
+
+	// Same as above
+	exp, exists := os.LookupEnv("JWT_EXPIRATION")
+	if !exists {
+		return Config{}, fmt.Errorf("Environment variable JWT_EXPIRATION must be set")
+	}
+
+	if _, err := strconv.Atoi(exp); err != nil {
+		return Config{}, fmt.Errorf("Environment variable JWT_EXPIRATION must be an integer")
 	}
 
 	// For now it's required since it's the only database supported

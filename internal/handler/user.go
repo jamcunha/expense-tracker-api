@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -185,16 +186,27 @@ func (h *User) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func createJWT(user model.User) (string, error) {
-	jwtSecret := os.Getenv("JWT_SECRET")
+	jwtSecret, exists := os.LookupEnv("JWT_SECRET")
 	// TODO: create a config and load all environment variables before starting the server
-	if jwtSecret == "" {
+	if exists {
 		panic("JWT_SECRET is not set")
 	}
 
+	exp, exists := os.LookupEnv("JWT_EXPIRATION")
+	if exists {
+		panic("JWT_EXPIRATION is not set")
+	}
+
+	jwtExpiration, err := strconv.Atoi(exp)
+	if err != nil {
+		panic("JWT_EXPIRATION must be an integer")
+	}
+
+	now := time.Now()
 	claims := jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		NotBefore: jwt.NewNumericDate(time.Now()),
+		ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(jwtExpiration) * time.Second)),
+		IssuedAt:  jwt.NewNumericDate(now),
+		NotBefore: jwt.NewNumericDate(now),
 		Issuer:    "expense-tracker",
 		Subject:   user.ID.String(),
 	}
