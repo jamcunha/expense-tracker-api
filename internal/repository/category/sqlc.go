@@ -59,6 +59,35 @@ func (s *SqlcRepo) Delete(
 	}, nil
 }
 
+func (s *SqlcRepo) Update(
+	ctx context.Context,
+	name string,
+	id uuid.UUID,
+	userID uuid.UUID,
+) (model.Category, error) {
+	dbCategory, err := s.Queries.UpdateCategory(ctx, database.UpdateCategoryParams{
+		Name:      name,
+		UpdatedAt: time.Now(),
+		ID:        id,
+		UserID:    userID,
+	})
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Category{}, ErrNotFound
+	} else if err != nil {
+		return model.Category{}, err
+	}
+
+	return model.Category{
+		ID:        dbCategory.ID,
+		CreatedAt: dbCategory.CreatedAt,
+		UpdatedAt: dbCategory.UpdatedAt,
+
+		Name:   dbCategory.Name,
+		UserID: dbCategory.UserID,
+	}, nil
+}
+
 func (s *SqlcRepo) FindByID(
 	ctx context.Context,
 	id uuid.UUID,

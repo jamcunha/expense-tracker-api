@@ -32,7 +32,7 @@ func New(config Config) (*App, error) {
 		Queries: database.New(conn),
 		config:  config,
 	}
-	app.loadV1Routes("/api/v1")
+	app.loadRoutes("/api/v1")
 
 	return app, nil
 }

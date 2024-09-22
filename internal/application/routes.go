@@ -11,7 +11,7 @@ import (
 	"github.com/jamcunha/expense-tracker/internal/repository/user"
 )
 
-func (a *App) loadV1Routes(prefix string) {
+func (a *App) loadRoutes(prefix string) {
 	a.router = http.NewServeMux()
 
 	// Health check
@@ -39,6 +39,8 @@ func (a *App) loadUserRoutes(r *http.ServeMux, prefix string) {
 		},
 	}
 
+	// NOTE: to restore password, add a route that requests the email and sends a token to the user
+	// and another route that receives the token and the new password
 	r.HandleFunc("GET "+prefix+"/{id}", userHandler.GetByID)
 	r.HandleFunc("POST "+prefix, userHandler.Create)
 	r.HandleFunc("DELETE "+prefix+"/{id}", userHandler.DeleteByID)
@@ -58,6 +60,7 @@ func (a *App) loadCategoryRoutes(r *http.ServeMux, prefix string) {
 	r.Handle("GET "+prefix, jwtMiddleware(categoryHandler.GetAll))
 	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(categoryHandler.GetByID))
 	r.Handle("POST "+prefix, jwtMiddleware(categoryHandler.Create))
+	r.Handle("PUT "+prefix+"/{id}", jwtMiddleware(categoryHandler.Update))
 	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(categoryHandler.DeleteByID))
 }
 
@@ -75,10 +78,10 @@ func (a *App) loadExpenseRoutes(r *http.ServeMux, prefix string) {
 	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(expenseHandler.GetByID))
 	r.Handle("GET "+prefix+"/category/{id}", jwtMiddleware(expenseHandler.GetByCategory))
 	r.Handle("POST "+prefix, jwtMiddleware(expenseHandler.Create))
+	r.Handle("PUT "+prefix+"/{id}", jwtMiddleware(expenseHandler.Update))
 	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(expenseHandler.DeleteByID))
 }
 
-// TODO: add a update route (PUT, PATCH)
 func (a *App) loadBudgetRoutes(r *http.ServeMux, prefix string) {
 	budgetHandler := &handler.Budget{
 		Repo: &budget.SqlcRepo{

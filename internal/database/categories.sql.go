@@ -176,3 +176,33 @@ func (q *Queries) GetUserCategoriesPaged(ctx context.Context, arg GetUserCategor
 	}
 	return items, nil
 }
+
+const updateCategory = `-- name: UpdateCategory :one
+UPDATE categories SET name = $1 AND updated_at = $2
+WHERE id = $3 AND user_id = $4 RETURNING id, created_at, updated_at, name, user_id
+`
+
+type UpdateCategoryParams struct {
+	Name      string
+	UpdatedAt time.Time
+	ID        uuid.UUID
+	UserID    uuid.UUID
+}
+
+func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error) {
+	row := q.db.QueryRowContext(ctx, updateCategory,
+		arg.Name,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.UserID,
+	)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.UserID,
+	)
+	return i, err
+}

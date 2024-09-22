@@ -149,6 +149,67 @@ func (h *Category) Create(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
+func (h *Category) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		fmt.Println("Handler Error:", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var body struct {
+		Name string `json:"name"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+
+	}
+
+	userID := r.Context().Value("userID").(uuid.UUID)
+
+	c, err := h.Repo.FindByID(r.Context(), id, userID)
+
+	if errors.Is(err, repo.ErrNotFound) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+
+		w.Write([]byte(`{"error": "Category does not exist"}`))
+		return
+	} else if err != nil {
+		fmt.Println("failed to find:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c, err = h.Repo.Update(r.Context(), body.Name, id, userID)
+
+	if errors.Is(err, repo.ErrNotFound) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+
+		w.Write([]byte(`{"error": "Category does not exist"}`))
+		return
+	} else if err != nil {
+		fmt.Println("failed to update:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	res, err := json.Marshal(c)
+	if err != nil {
+		fmt.Println("failed to marshal:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	w.Write(res)
+}
+
 func (h *Category) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {

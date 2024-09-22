@@ -97,6 +97,86 @@ func (s *SqlcRepo) Delete(
 	}, tx.Commit()
 }
 
+func (s *SqlcRepo) Update(ctx context.Context, update UpdateExpense) (model.Expense, error) {
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return model.Expense{}, err
+	}
+	defer tx.Rollback()
+
+	qtx := s.Queries.WithTx(tx)
+
+	dbExpense, err := qtx.GetExpenseByID(ctx, database.GetExpenseByIDParams{
+		ID:     update.ID,
+		UserID: update.UserID,
+	})
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Expense{}, ErrNotFound
+	} else if err != nil {
+		return model.Expense{}, err
+	}
+
+	oldCategory := dbExpense.CategoryID
+	oldAmount := decimal.RequireFromString(dbExpense.Amount)
+
+	if update.Description == "" {
+		update.Description = dbExpense.Description
+	}
+
+	if update.Amount.IsZero() {
+		update.Amount = decimal.RequireFromString(dbExpense.Amount)
+	}
+
+	if update.CategoryID == uuid.Nil {
+		update.CategoryID = dbExpense.CategoryID
+	}
+
+	now := time.Now()
+	dbExpense, err = qtx.UpdateExpense(ctx, database.UpdateExpenseParams{
+		ID:     update.ID,
+		UserID: update.UserID,
+
+		Description: update.Description,
+		Amount:      update.Amount.String(),
+		CategoryID:  update.CategoryID,
+		UpdatedAt:   now,
+	})
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Expense{}, ErrNotFound
+	} else if err != nil {
+		return model.Expense{}, err
+	}
+
+	if err := qtx.UpdateBudgetAmount(ctx, database.UpdateBudgetAmountParams{
+		CategoryID: oldCategory,
+		Amount:     "-" + oldAmount.String(),
+		StartDate:  dbExpense.CreatedAt,
+	}); err != nil {
+		return model.Expense{}, err
+	}
+
+	if err := qtx.UpdateBudgetAmount(ctx, database.UpdateBudgetAmountParams{
+		CategoryID: dbExpense.CategoryID,
+		Amount:     dbExpense.Amount,
+		StartDate:  dbExpense.UpdatedAt,
+	}); err != nil {
+		return model.Expense{}, err
+	}
+
+	return model.Expense{
+		ID:        dbExpense.ID,
+		CreatedAt: dbExpense.CreatedAt,
+		UpdatedAt: dbExpense.UpdatedAt,
+
+		Description: dbExpense.Description,
+		Amount:      decimal.RequireFromString(dbExpense.Amount),
+		CategoryID:  dbExpense.CategoryID,
+		UserID:      dbExpense.UserID,
+	}, tx.Commit()
+}
+
 func (s *SqlcRepo) FindByID(
 	ctx context.Context,
 	id uuid.UUID,

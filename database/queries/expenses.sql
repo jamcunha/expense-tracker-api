@@ -30,6 +30,10 @@ SELECT * FROM expenses WHERE category_id = $1 AND user_id = $2
 ORDER BY created_at DESC, id DESC
 LIMIT $3;
 
+-- name: UpdateExpense :one
+UPDATE expenses SET description = $1, amount = $2, category_id = $3, updated_at = $4
+WHERE id = $5 AND user_id = $6 RETURNING *;
+
 -- name: GetExpenseByID :one
 SELECT * FROM expenses WHERE id = $1 AND user_id = $2;
 

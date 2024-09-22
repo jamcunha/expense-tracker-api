@@ -331,3 +331,39 @@ func (q *Queries) GetUserExpensesPaged(ctx context.Context, arg GetUserExpensesP
 	}
 	return items, nil
 }
+
+const updateExpense = `-- name: UpdateExpense :one
+UPDATE expenses SET description = $1, amount = $2, category_id = $3, updated_at = $4
+WHERE id = $5 AND user_id = $6 RETURNING id, created_at, updated_at, description, amount, category_id, user_id
+`
+
+type UpdateExpenseParams struct {
+	Description string
+	Amount      string
+	CategoryID  uuid.UUID
+	UpdatedAt   time.Time
+	ID          uuid.UUID
+	UserID      uuid.UUID
+}
+
+func (q *Queries) UpdateExpense(ctx context.Context, arg UpdateExpenseParams) (Expense, error) {
+	row := q.db.QueryRowContext(ctx, updateExpense,
+		arg.Description,
+		arg.Amount,
+		arg.CategoryID,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.UserID,
+	)
+	var i Expense
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Description,
+		&i.Amount,
+		&i.CategoryID,
+		&i.UserID,
+	)
+	return i, err
+}

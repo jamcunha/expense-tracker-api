@@ -19,3 +19,7 @@ LIMIT $2;
 
 -- name: GetCategoryByID :one
 SELECT * FROM categories WHERE id = $1 AND user_id = $2;
+
+-- name: UpdateCategory :one
+UPDATE categories SET name = $1 AND updated_at = $2
+WHERE id = $3 AND user_id = $4 RETURNING *;

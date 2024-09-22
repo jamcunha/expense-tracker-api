@@ -254,3 +254,67 @@ func (h *Expense) DeleteByID(w http.ResponseWriter, r *http.Request) {
 
 	w.Write(res)
 }
+
+func (h *Expense) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		fmt.Println("Handler Error:", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var body struct {
+		Description string  `json:"description,omitempty"`
+		Amount      float64 `json:"amount,omitempty"`
+		CategoryID  string  `json:"category_id,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	categoryID, err := uuid.Parse(body.CategoryID)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+
+		w.Write([]byte(`{"error": "Invalid category ID"}`))
+		return
+	}
+
+	userID := r.Context().Value("userID").(uuid.UUID)
+
+	e, err := h.Repo.Update(r.Context(), repo.UpdateExpense{
+		ID:     id,
+		UserID: userID,
+
+		Description: body.Description,
+		Amount:      decimal.NewFromFloat(body.Amount),
+		CategoryID:  categoryID,
+	})
+
+	if errors.Is(err, repo.ErrNotFound) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+
+		w.Write([]byte(`{"error": "Expense does not exist"}`))
+		return
+	} else if err != nil {
+		fmt.Println("failed to update:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	res, err := json.Marshal(e)
+	if err != nil {
+		fmt.Println("failed to marshal:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	w.Write(res)
+}
