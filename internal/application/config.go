@@ -3,7 +3,7 @@ package application
 import (
 	"fmt"
 	"os"
-	"strconv"
+	"time"
 )
 
 // NOTE: for now database options are just pointers (nil if option is not used).
@@ -12,6 +12,11 @@ type Config struct {
 	ServerPort  string
 	PostgresUrl *string
 	// RedisUrl    *string
+
+	JWTAccessSecret  string
+	JWTRefreshSecret string
+	JWTAccessExp     time.Duration
+	JWTRefreshExp    time.Duration
 }
 
 func LoadConfig() (Config, error) {
@@ -22,21 +27,40 @@ func LoadConfig() (Config, error) {
 		cfg.ServerPort = port
 	}
 
-	// NOTE: For now just checks if JWT_SECRET exists to be used with os.Getenv in JWT middleware
-	// preferably it should be added to Config
-	if _, exists := os.LookupEnv("JWT_SECRET"); !exists {
-		return Config{}, fmt.Errorf("Environment variable JWT_SECRET must be set")
+	if secret, exists := os.LookupEnv("JWT_ACCESS_SECRET"); exists {
+		cfg.JWTAccessSecret = secret
+	} else {
+		return Config{}, fmt.Errorf("Environment variable JWT_ACCESS_SECRET must be set")
 	}
 
-	// Same as above
-	exp, exists := os.LookupEnv("JWT_EXPIRATION")
+	if secret, exists := os.LookupEnv("JWT_REFRESH_SECRET"); exists {
+		cfg.JWTRefreshSecret = secret
+	} else {
+		return Config{}, fmt.Errorf("Environment variable JWT_REFRESH_SECRET must be set")
+	}
+
+	accessExp, exists := os.LookupEnv("JWT_ACCESS_EXPIRATION")
 	if !exists {
-		return Config{}, fmt.Errorf("Environment variable JWT_EXPIRATION must be set")
+		return Config{}, fmt.Errorf("Environment variable JWT_ACCESS_EXPIRATION must be set")
 	}
 
-	if _, err := strconv.Atoi(exp); err != nil {
-		return Config{}, fmt.Errorf("Environment variable JWT_EXPIRATION must be an integer")
+	refreshExp, exists := os.LookupEnv("JWT_REFRESH_EXPIRATION")
+	if !exists {
+		return Config{}, fmt.Errorf("Environment variable JWT_REFRESH_EXPIRATION must be set")
 	}
+
+	accessExpDuration, err := time.ParseDuration(accessExp + "m")
+	if err != nil {
+		return Config{}, fmt.Errorf("Failed to parse JWT_ACCESS_EXPIRATION: %w", err)
+	}
+
+	refreshExpDuration, err := time.ParseDuration(refreshExp + "m")
+	if err != nil {
+		return Config{}, fmt.Errorf("Failed to parse JWT_REFRESH_EXPIRATION: %w", err)
+	}
+
+	cfg.JWTAccessExp = accessExpDuration
+	cfg.JWTRefreshExp = refreshExpDuration
 
 	// For now it's required since it's the only database supported
 	// but this config gives the option to add more databases

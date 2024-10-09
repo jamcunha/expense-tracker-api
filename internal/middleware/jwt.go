@@ -2,16 +2,17 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
-func JWTAuth(next http.Handler) http.Handler {
+func JWTAuth(next http.Handler, jwtSecret string) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) { // Authorization: Bearer <token>
 			if r.Header.Get("Authorization") == "" {
@@ -22,8 +23,19 @@ func JWTAuth(next http.Handler) http.Handler {
 				return
 			}
 
-			token, err := validateJWT(strings.Split(r.Header.Get("Authorization"), " ")[1])
-			if err != nil {
+			token, err := validateJWT(
+				strings.Split(r.Header.Get("Authorization"), " ")[1],
+				jwtSecret,
+			)
+			if errors.Is(err, ErrExpiredToken) {
+				// NOTE: Should the refresh be handled here or let the front end take care of it?
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+
+				w.Write([]byte(`{"error": "Token Expired"}`))
+				return
+			} else if err != nil {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 
@@ -64,18 +76,29 @@ func JWTAuth(next http.Handler) http.Handler {
 	)
 }
 
-func validateJWT(tokenString string) (*jwt.Token, error) {
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" { // TODO: find a better way to handle this
-		fmt.Println("JWT_SECRET not set")
-		return nil, fmt.Errorf("JWT_SECRET not set")
-	}
+var ErrExpiredToken = fmt.Errorf("token is expired")
 
-	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+func validateJWT(tokenString string, jwtSecret string) (*jwt.Token, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-
 		return []byte(jwtSecret), nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		exp, err := claims.GetExpirationTime()
+		if err != nil {
+			return nil, err
+		}
+
+		if exp.Before(time.Now()) {
+			return nil, ErrExpiredToken
+		}
+	}
+
+	return token, nil
 }

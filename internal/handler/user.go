@@ -5,11 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jamcunha/expense-tracker/internal/model"
 	repo "github.com/jamcunha/expense-tracker/internal/repository/user"
@@ -138,79 +135,4 @@ func (h *User) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Write(res)
-}
-
-func (h *User) Login(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	u, err := h.Repo.FindByEmail(r.Context(), body.Email)
-	if errors.Is(err, repo.ErrNotFound) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-
-		w.Write([]byte(`{"error": "Invalid credentials"}`))
-		return
-	} else if err != nil {
-		fmt.Print("failed to query:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if !u.ComparePassword(body.Password) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-
-		w.Write([]byte(`{"error": "Invalid credentials"}`))
-		return
-	}
-
-	token, err := createJWT(u)
-	if err != nil {
-		fmt.Println("failed to create JWT:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write([]byte(fmt.Sprintf(`{"token": "%s"}`, token)))
-}
-
-func createJWT(user model.User) (string, error) {
-	jwtSecret, exists := os.LookupEnv("JWT_SECRET")
-	// TODO: create a config and load all environment variables before starting the server
-	if exists {
-		panic("JWT_SECRET is not set")
-	}
-
-	exp, exists := os.LookupEnv("JWT_EXPIRATION")
-	if exists {
-		panic("JWT_EXPIRATION is not set")
-	}
-
-	jwtExpiration, err := strconv.Atoi(exp)
-	if err != nil {
-		panic("JWT_EXPIRATION must be an integer")
-	}
-
-	now := time.Now()
-	claims := jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(jwtExpiration) * time.Second)),
-		IssuedAt:  jwt.NewNumericDate(now),
-		NotBefore: jwt.NewNumericDate(now),
-		Issuer:    "expense-tracker",
-		Subject:   user.ID.String(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(jwtSecret))
 }

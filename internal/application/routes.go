@@ -24,6 +24,7 @@ func (a *App) loadRoutes(prefix string) {
 	r := http.NewServeMux()
 
 	a.loadUserRoutes(r, "/users")
+	a.loadTokenRoutes(r, "/token")
 	a.loadCategoryRoutes(r, "/categories")
 	a.loadExpenseRoutes(r, "/expenses")
 	a.loadBudgetRoutes(r, "/budgets")
@@ -39,12 +40,31 @@ func (a *App) loadUserRoutes(r *http.ServeMux, prefix string) {
 		},
 	}
 
+	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
+
 	// NOTE: to restore password, add a route that requests the email and sends a token to the user
 	// and another route that receives the token and the new password
-	r.HandleFunc("GET "+prefix+"/{id}", userHandler.GetByID)
+	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(userHandler.GetByID))
 	r.HandleFunc("POST "+prefix, userHandler.Create)
-	r.HandleFunc("DELETE "+prefix+"/{id}", userHandler.DeleteByID)
-	r.HandleFunc("POST /login", userHandler.Login) // does not use prefix
+	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(userHandler.DeleteByID))
+}
+
+func (a *App) loadTokenRoutes(r *http.ServeMux, prefix string) {
+	tokenHandler := &handler.Token{
+		Repo: &user.SqlcRepo{
+			DB:      a.DB,
+			Queries: a.Queries,
+		},
+		JWTAccessSecret:  a.config.JWTAccessSecret,
+		JWTRefreshSecret: a.config.JWTRefreshSecret,
+		JWTAccessExp:     a.config.JWTAccessExp,
+		JWTRefreshExp:    a.config.JWTRefreshExp,
+	}
+
+	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
+
+	r.HandleFunc("POST "+prefix, tokenHandler.Create)
+	r.Handle("POST "+prefix+"/refresh", jwtMiddleware(tokenHandler.Refresh))
 }
 
 func (a *App) loadCategoryRoutes(r *http.ServeMux, prefix string) {
@@ -55,7 +75,7 @@ func (a *App) loadCategoryRoutes(r *http.ServeMux, prefix string) {
 		},
 	}
 
-	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f) }
+	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
 
 	r.Handle("GET "+prefix, jwtMiddleware(categoryHandler.GetAll))
 	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(categoryHandler.GetByID))
@@ -72,7 +92,7 @@ func (a *App) loadExpenseRoutes(r *http.ServeMux, prefix string) {
 		},
 	}
 
-	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f) }
+	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
 
 	r.Handle("GET "+prefix, jwtMiddleware(expenseHandler.GetAll))
 	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(expenseHandler.GetByID))
@@ -90,7 +110,7 @@ func (a *App) loadBudgetRoutes(r *http.ServeMux, prefix string) {
 		},
 	}
 
-	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f) }
+	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
 
 	r.Handle("GET "+prefix, jwtMiddleware(budgetHandler.GetAll))
 	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(budgetHandler.GetByID))
