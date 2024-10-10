@@ -41,6 +41,7 @@ The API will return the total amount spent in a category in a given interval, wh
     - **Endpoint:** `/user/{id}`
     - **Method:** `GET`
     - **Description:** Get the user's information
+    - **Header:** `Authorization: Bearer <access_token>`
     - **Request Body:** `None`
     - **Response:**
         ```json
@@ -79,6 +80,7 @@ The API will return the total amount spent in a category in a given interval, wh
     - **Endpoint:** `/user/{id}`
     - **Method:** `DELETE`
     - **Description:** Delete a user
+    - **Header:** `Authorization: Bearer <access_token>`
     - **Request Body:** `None`
     - **Successful Response:** 
         ```json
@@ -91,10 +93,12 @@ The API will return the total amount spent in a category in a given interval, wh
         }
         ```
 
-- **Login:**
-    - **Endpoint:** `/login`
+### Token
+
+- **Get tokens:**
+    - **Endpoint:** `/token`
     - **Method:** `POST`
-    - **Description:** Login a user
+    - **Description:** Get the access and refresh JWT tokens
     - **Request Body:**
         ```json
         {
@@ -105,7 +109,25 @@ The API will return the total amount spent in a category in a given interval, wh
     - **Successful Response:**
         ```json
         {
-            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+            "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+        }
+        ```
+
+- **Refresh token:**
+    - **Endpoint:** `/token/refresh`
+    - **Method:** `POST`
+    - **Description:** Refresh the access token
+    - **Request Body:**
+        ```json
+        {
+            "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+        }
+        ```
+    - **Successful Response:**
+        ```json
+        {
+            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
         }
         ```
 

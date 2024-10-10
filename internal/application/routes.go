@@ -61,10 +61,8 @@ func (a *App) loadTokenRoutes(r *http.ServeMux, prefix string) {
 		JWTRefreshExp:    a.config.JWTRefreshExp,
 	}
 
-	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
-
 	r.HandleFunc("POST "+prefix, tokenHandler.Create)
-	r.Handle("POST "+prefix+"/refresh", jwtMiddleware(tokenHandler.Refresh))
+	r.HandleFunc("POST "+prefix+"/refresh", tokenHandler.Refresh)
 }
 
 func (a *App) loadCategoryRoutes(r *http.ServeMux, prefix string) {
