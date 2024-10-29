@@ -15,12 +15,7 @@
         default = pkgs.mkShell {
           packages = with pkgs; [
             go # maybe add an overlay to specify a version
-
-            gopls
             gotools
-            gofumpt # Stricter gofmt
-            goimports-reviser # deterministic order of imports
-            golines # format lines
 
             # SQL Related packages
             sqlc  # Query builder
