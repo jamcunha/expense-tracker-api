@@ -546,8 +546,10 @@ The following environment variables are required to run the API:
 
 - **PORT:** the port the API will run on
 - **DB_URL:** the URL to the PostgreSQL database
-- **JWT_SECRET:** the secret used to sign the JWT tokens
-- **JWT_EXPIRATION:** the expiration time for the JWT tokens in seconds
+- **JWT_ACCESS_SECRET:** the secret used to sign the JWT access tokens
+- **JWT_REFRESH_SECRET:** the secret used to sign the JWT refresh tokens
+- **JWT_ACCESS_EXPIRATION:** the expiration time for the JWT access tokens in minutes
+- **JWT_REFRESH_EXPIRATION:** the expiration time for the JWT tokens in minutes
 
 A [`.env.example`](./.env.example) file is provided.
 
