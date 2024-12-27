@@ -1,6 +1,10 @@
 API_PATH = ./cmd/api
 API_BIN_NAME = expense-tracker-api
 
+.PHONY: run
+run: build
+	@/tmp/bin/$(API_BIN_NAME)
+
 .PHONY: test
 test:
 	go test -v -race -buildvcs ./...
@@ -13,10 +17,6 @@ test/cover:
 .PHONY: build
 build:
 	@go build -o=/tmp/bin/$(API_BIN_NAME) $(API_PATH)
-
-.PHONY: run
-run: build
-	@/tmp/bin/$(API_BIN_NAME)
 
 .PHONY: migration/up
 migration/up:

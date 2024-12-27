@@ -3,13 +3,14 @@
 //   sqlc v1.27.0
 // source: expenses.sql
 
-package database
+package repository
 
 import (
 	"context"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 const createExpense = `-- name: CreateExpense :one
@@ -20,18 +21,18 @@ RETURNING id, created_at, updated_at, description, amount, category_id, user_id
 `
 
 type CreateExpenseParams struct {
-	ID          uuid.UUID
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Description string
-	Amount      string
-	CategoryID  uuid.UUID
-	UserID      uuid.UUID
+	ID          uuid.UUID       `json:"id"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+	Description string          `json:"description"`
+	Amount      decimal.Decimal `json:"amount"`
+	CategoryID  uuid.UUID       `json:"category_id"`
+	UserID      uuid.UUID       `json:"user_id"`
 }
 
 // TODO: add query (and route) to get all expenses in a time interval
 func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (Expense, error) {
-	row := q.db.QueryRowContext(ctx, createExpense,
+	row := q.db.QueryRow(ctx, createExpense,
 		arg.ID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -58,12 +59,12 @@ DELETE FROM expenses WHERE id = $1 AND user_id = $2 RETURNING id, created_at, up
 `
 
 type DeleteExpenseParams struct {
-	ID     uuid.UUID
-	UserID uuid.UUID
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) DeleteExpense(ctx context.Context, arg DeleteExpenseParams) (Expense, error) {
-	row := q.db.QueryRowContext(ctx, deleteExpense, arg.ID, arg.UserID)
+	row := q.db.QueryRow(ctx, deleteExpense, arg.ID, arg.UserID)
 	var i Expense
 	err := row.Scan(
 		&i.ID,
@@ -84,13 +85,13 @@ LIMIT $3
 `
 
 type GetCategoryExpensesParams struct {
-	CategoryID uuid.UUID
-	UserID     uuid.UUID
-	Limit      int32
+	CategoryID uuid.UUID `json:"category_id"`
+	UserID     uuid.UUID `json:"user_id"`
+	Limit      int32     `json:"limit"`
 }
 
 func (q *Queries) GetCategoryExpenses(ctx context.Context, arg GetCategoryExpensesParams) ([]Expense, error) {
-	rows, err := q.db.QueryContext(ctx, getCategoryExpenses, arg.CategoryID, arg.UserID, arg.Limit)
+	rows, err := q.db.Query(ctx, getCategoryExpenses, arg.CategoryID, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -111,9 +112,6 @@ func (q *Queries) GetCategoryExpenses(ctx context.Context, arg GetCategoryExpens
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -128,15 +126,15 @@ LIMIT $5
 `
 
 type GetCategoryExpensesPagedParams struct {
-	CategoryID uuid.UUID
-	UserID     uuid.UUID
-	CreatedAt  time.Time
-	ID         uuid.UUID
-	Limit      int32
+	CategoryID uuid.UUID `json:"category_id"`
+	UserID     uuid.UUID `json:"user_id"`
+	CreatedAt  time.Time `json:"created_at"`
+	ID         uuid.UUID `json:"id"`
+	Limit      int32     `json:"limit"`
 }
 
 func (q *Queries) GetCategoryExpensesPaged(ctx context.Context, arg GetCategoryExpensesPagedParams) ([]Expense, error) {
-	rows, err := q.db.QueryContext(ctx, getCategoryExpensesPaged,
+	rows, err := q.db.Query(ctx, getCategoryExpensesPaged,
 		arg.CategoryID,
 		arg.UserID,
 		arg.CreatedAt,
@@ -163,9 +161,6 @@ func (q *Queries) GetCategoryExpensesPaged(ctx context.Context, arg GetCategoryE
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -177,12 +172,12 @@ SELECT id, created_at, updated_at, description, amount, category_id, user_id FRO
 `
 
 type GetExpenseByIDParams struct {
-	ID     uuid.UUID
-	UserID uuid.UUID
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) GetExpenseByID(ctx context.Context, arg GetExpenseByIDParams) (Expense, error) {
-	row := q.db.QueryRowContext(ctx, getExpenseByID, arg.ID, arg.UserID)
+	row := q.db.QueryRow(ctx, getExpenseByID, arg.ID, arg.UserID)
 	var i Expense
 	err := row.Scan(
 		&i.ID,
@@ -203,15 +198,15 @@ WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
 `
 
 type GetTotalSpentParams struct {
-	UserID      uuid.UUID
-	CreatedAt   time.Time
-	CreatedAt_2 time.Time
+	UserID      uuid.UUID `json:"user_id"`
+	CreatedAt   time.Time `json:"created_at"`
+	CreatedAt_2 time.Time `json:"created_at_2"`
 }
 
 // NOTE: both folowing queries are private to the API, not used by the client (might be made public in the future)
-func (q *Queries) GetTotalSpent(ctx context.Context, arg GetTotalSpentParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getTotalSpent, arg.UserID, arg.CreatedAt, arg.CreatedAt_2)
-	var column_1 string
+func (q *Queries) GetTotalSpent(ctx context.Context, arg GetTotalSpentParams) (decimal.Decimal, error) {
+	row := q.db.QueryRow(ctx, getTotalSpent, arg.UserID, arg.CreatedAt, arg.CreatedAt_2)
+	var column_1 decimal.Decimal
 	err := row.Scan(&column_1)
 	return column_1, err
 }
@@ -222,20 +217,20 @@ WHERE user_id = $1 AND category_id = $2 AND created_at >= $3 AND created_at <= $
 `
 
 type GetTotalSpentInCategoryParams struct {
-	UserID      uuid.UUID
-	CategoryID  uuid.UUID
-	CreatedAt   time.Time
-	CreatedAt_2 time.Time
+	UserID      uuid.UUID `json:"user_id"`
+	CategoryID  uuid.UUID `json:"category_id"`
+	CreatedAt   time.Time `json:"created_at"`
+	CreatedAt_2 time.Time `json:"created_at_2"`
 }
 
-func (q *Queries) GetTotalSpentInCategory(ctx context.Context, arg GetTotalSpentInCategoryParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getTotalSpentInCategory,
+func (q *Queries) GetTotalSpentInCategory(ctx context.Context, arg GetTotalSpentInCategoryParams) (decimal.Decimal, error) {
+	row := q.db.QueryRow(ctx, getTotalSpentInCategory,
 		arg.UserID,
 		arg.CategoryID,
 		arg.CreatedAt,
 		arg.CreatedAt_2,
 	)
-	var column_1 string
+	var column_1 decimal.Decimal
 	err := row.Scan(&column_1)
 	return column_1, err
 }
@@ -247,12 +242,12 @@ LIMIT $2
 `
 
 type GetUserExpensesParams struct {
-	UserID uuid.UUID
-	Limit  int32
+	UserID uuid.UUID `json:"user_id"`
+	Limit  int32     `json:"limit"`
 }
 
 func (q *Queries) GetUserExpenses(ctx context.Context, arg GetUserExpensesParams) ([]Expense, error) {
-	rows, err := q.db.QueryContext(ctx, getUserExpenses, arg.UserID, arg.Limit)
+	rows, err := q.db.Query(ctx, getUserExpenses, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -273,9 +268,6 @@ func (q *Queries) GetUserExpenses(ctx context.Context, arg GetUserExpensesParams
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -290,14 +282,14 @@ LIMIT $4
 `
 
 type GetUserExpensesPagedParams struct {
-	UserID    uuid.UUID
-	CreatedAt time.Time
-	ID        uuid.UUID
-	Limit     int32
+	UserID    uuid.UUID `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	Limit     int32     `json:"limit"`
 }
 
 func (q *Queries) GetUserExpensesPaged(ctx context.Context, arg GetUserExpensesPagedParams) ([]Expense, error) {
-	rows, err := q.db.QueryContext(ctx, getUserExpensesPaged,
+	rows, err := q.db.Query(ctx, getUserExpensesPaged,
 		arg.UserID,
 		arg.CreatedAt,
 		arg.ID,
@@ -323,9 +315,6 @@ func (q *Queries) GetUserExpensesPaged(ctx context.Context, arg GetUserExpensesP
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -338,16 +327,16 @@ WHERE id = $5 AND user_id = $6 RETURNING id, created_at, updated_at, description
 `
 
 type UpdateExpenseParams struct {
-	Description string
-	Amount      string
-	CategoryID  uuid.UUID
-	UpdatedAt   time.Time
-	ID          uuid.UUID
-	UserID      uuid.UUID
+	Description string          `json:"description"`
+	Amount      decimal.Decimal `json:"amount"`
+	CategoryID  uuid.UUID       `json:"category_id"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+	ID          uuid.UUID       `json:"id"`
+	UserID      uuid.UUID       `json:"user_id"`
 }
 
 func (q *Queries) UpdateExpense(ctx context.Context, arg UpdateExpenseParams) (Expense, error) {
-	row := q.db.QueryRowContext(ctx, updateExpense,
+	row := q.db.QueryRow(ctx, updateExpense,
 		arg.Description,
 		arg.Amount,
 		arg.CategoryID,

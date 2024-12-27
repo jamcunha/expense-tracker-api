@@ -9,12 +9,14 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/jamcunha/expense-tracker/internal/model"
-	repo "github.com/jamcunha/expense-tracker/internal/repository/user"
+	"github.com/jackc/pgx/v5"
+	"github.com/jamcunha/expense-tracker/internal/repository"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Token struct {
-	Repo             repo.Repo
+	DB               *pgx.Conn
+	Queries          *repository.Queries
 	JWTAccessSecret  string
 	JWTRefreshSecret string
 	JWTAccessExp     time.Duration
@@ -32,8 +34,8 @@ func (h *Token) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.Repo.FindByEmail(r.Context(), body.Email)
-	if errors.Is(err, repo.ErrNotFound) {
+	u, err := h.Queries.GetUserByEmail(r.Context(), body.Email)
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 
@@ -45,7 +47,7 @@ func (h *Token) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !u.ComparePassword(body.Password) {
+	if !comparePassword(u.Password, body.Password) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 
@@ -131,7 +133,7 @@ func (h *Token) Refresh(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error": "Invalid token"}`))
 	}
 
-	u, err := h.Repo.FindByID(r.Context(), userID)
+	u, err := h.Queries.GetUserByID(r.Context(), userID)
 	if err != nil {
 		fmt.Print("failed to query:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -161,7 +163,11 @@ func (h *Token) Refresh(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func createJWT(user model.User, jwtSecret string, jwtExpiration time.Duration) (string, error) {
+func createJWT(
+	user repository.User,
+	jwtSecret string,
+	jwtExpiration time.Duration,
+) (string, error) {
 	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(now.Add(jwtExpiration)),
@@ -202,4 +208,8 @@ func validateJWT(tokenString string, jwtSecret string) (*jwt.Token, error) {
 	}
 
 	return token, nil
+}
+
+func comparePassword(userPassword string, givenPassword string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(userPassword), []byte(givenPassword)) == nil
 }

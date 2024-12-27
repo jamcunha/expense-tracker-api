@@ -3,7 +3,7 @@
 //   sqlc v1.27.0
 // source: categories.sql
 
-package database
+package repository
 
 import (
 	"context"
@@ -19,15 +19,15 @@ RETURNING id, created_at, updated_at, name, user_id
 `
 
 type CreateCategoryParams struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Name      string
-	UserID    uuid.UUID
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	UserID    uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, createCategory,
+	row := q.db.QueryRow(ctx, createCategory,
 		arg.ID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -50,12 +50,12 @@ DELETE FROM categories WHERE id = $1 AND user_id = $2 RETURNING id, created_at, 
 `
 
 type DeleteCategoryParams struct {
-	ID     uuid.UUID
-	UserID uuid.UUID
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) DeleteCategory(ctx context.Context, arg DeleteCategoryParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, deleteCategory, arg.ID, arg.UserID)
+	row := q.db.QueryRow(ctx, deleteCategory, arg.ID, arg.UserID)
 	var i Category
 	err := row.Scan(
 		&i.ID,
@@ -72,12 +72,12 @@ SELECT id, created_at, updated_at, name, user_id FROM categories WHERE id = $1 A
 `
 
 type GetCategoryByIDParams struct {
-	ID     uuid.UUID
-	UserID uuid.UUID
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) GetCategoryByID(ctx context.Context, arg GetCategoryByIDParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, getCategoryByID, arg.ID, arg.UserID)
+	row := q.db.QueryRow(ctx, getCategoryByID, arg.ID, arg.UserID)
 	var i Category
 	err := row.Scan(
 		&i.ID,
@@ -96,12 +96,12 @@ LIMIT $2
 `
 
 type GetUserCategoriesParams struct {
-	UserID uuid.UUID
-	Limit  int32
+	UserID uuid.UUID `json:"user_id"`
+	Limit  int32     `json:"limit"`
 }
 
 func (q *Queries) GetUserCategories(ctx context.Context, arg GetUserCategoriesParams) ([]Category, error) {
-	rows, err := q.db.QueryContext(ctx, getUserCategories, arg.UserID, arg.Limit)
+	rows, err := q.db.Query(ctx, getUserCategories, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -120,9 +120,6 @@ func (q *Queries) GetUserCategories(ctx context.Context, arg GetUserCategoriesPa
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -137,14 +134,14 @@ LIMIT $4
 `
 
 type GetUserCategoriesPagedParams struct {
-	UserID    uuid.UUID
-	CreatedAt time.Time
-	ID        uuid.UUID
-	Limit     int32
+	UserID    uuid.UUID `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	Limit     int32     `json:"limit"`
 }
 
 func (q *Queries) GetUserCategoriesPaged(ctx context.Context, arg GetUserCategoriesPagedParams) ([]Category, error) {
-	rows, err := q.db.QueryContext(ctx, getUserCategoriesPaged,
+	rows, err := q.db.Query(ctx, getUserCategoriesPaged,
 		arg.UserID,
 		arg.CreatedAt,
 		arg.ID,
@@ -168,9 +165,6 @@ func (q *Queries) GetUserCategoriesPaged(ctx context.Context, arg GetUserCategor
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -183,14 +177,14 @@ WHERE id = $3 AND user_id = $4 RETURNING id, created_at, updated_at, name, user_
 `
 
 type UpdateCategoryParams struct {
-	Name      string
-	UpdatedAt time.Time
-	ID        uuid.UUID
-	UserID    uuid.UUID
+	Name      string    `json:"name"`
+	UpdatedAt time.Time `json:"updated_at"`
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, updateCategory,
+	row := q.db.QueryRow(ctx, updateCategory,
 		arg.Name,
 		arg.UpdatedAt,
 		arg.ID,

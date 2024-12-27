@@ -3,13 +3,14 @@
 //   sqlc v1.27.0
 // source: budgets.sql
 
-package database
+package repository
 
 import (
 	"context"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 const createBudget = `-- name: CreateBudget :one
@@ -19,19 +20,19 @@ RETURNING id, created_at, updated_at, amount, goal, start_date, end_date, user_i
 `
 
 type CreateBudgetParams struct {
-	ID         uuid.UUID
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	Amount     string
-	Goal       string
-	StartDate  time.Time
-	EndDate    time.Time
-	UserID     uuid.UUID
-	CategoryID uuid.UUID
+	ID         uuid.UUID       `json:"id"`
+	CreatedAt  time.Time       `json:"created_at"`
+	UpdatedAt  time.Time       `json:"updated_at"`
+	Amount     decimal.Decimal `json:"amount"`
+	Goal       decimal.Decimal `json:"goal"`
+	StartDate  time.Time       `json:"start_date"`
+	EndDate    time.Time       `json:"end_date"`
+	UserID     uuid.UUID       `json:"user_id"`
+	CategoryID uuid.UUID       `json:"category_id"`
 }
 
 func (q *Queries) CreateBudget(ctx context.Context, arg CreateBudgetParams) (Budget, error) {
-	row := q.db.QueryRowContext(ctx, createBudget,
+	row := q.db.QueryRow(ctx, createBudget,
 		arg.ID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -62,12 +63,12 @@ DELETE FROM budgets WHERE id = $1 AND user_id = $2 RETURNING id, created_at, upd
 `
 
 type DeleteBudgetParams struct {
-	ID     uuid.UUID
-	UserID uuid.UUID
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) DeleteBudget(ctx context.Context, arg DeleteBudgetParams) (Budget, error) {
-	row := q.db.QueryRowContext(ctx, deleteBudget, arg.ID, arg.UserID)
+	row := q.db.QueryRow(ctx, deleteBudget, arg.ID, arg.UserID)
 	var i Budget
 	err := row.Scan(
 		&i.ID,
@@ -88,12 +89,12 @@ SELECT id, created_at, updated_at, amount, goal, start_date, end_date, user_id, 
 `
 
 type GetBudgetByIDParams struct {
-	ID     uuid.UUID
-	UserID uuid.UUID
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) GetBudgetByID(ctx context.Context, arg GetBudgetByIDParams) (Budget, error) {
-	row := q.db.QueryRowContext(ctx, getBudgetByID, arg.ID, arg.UserID)
+	row := q.db.QueryRow(ctx, getBudgetByID, arg.ID, arg.UserID)
 	var i Budget
 	err := row.Scan(
 		&i.ID,
@@ -116,12 +117,12 @@ LIMIT $2
 `
 
 type GetUserBudgetsParams struct {
-	UserID uuid.UUID
-	Limit  int32
+	UserID uuid.UUID `json:"user_id"`
+	Limit  int32     `json:"limit"`
 }
 
 func (q *Queries) GetUserBudgets(ctx context.Context, arg GetUserBudgetsParams) ([]Budget, error) {
-	rows, err := q.db.QueryContext(ctx, getUserBudgets, arg.UserID, arg.Limit)
+	rows, err := q.db.Query(ctx, getUserBudgets, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -144,9 +145,6 @@ func (q *Queries) GetUserBudgets(ctx context.Context, arg GetUserBudgetsParams) 
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -161,14 +159,14 @@ LIMIT $4
 `
 
 type GetUserBudgetsPagedParams struct {
-	UserID    uuid.UUID
-	CreatedAt time.Time
-	ID        uuid.UUID
-	Limit     int32
+	UserID    uuid.UUID `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	Limit     int32     `json:"limit"`
 }
 
 func (q *Queries) GetUserBudgetsPaged(ctx context.Context, arg GetUserBudgetsPagedParams) ([]Budget, error) {
-	rows, err := q.db.QueryContext(ctx, getUserBudgetsPaged,
+	rows, err := q.db.Query(ctx, getUserBudgetsPaged,
 		arg.UserID,
 		arg.CreatedAt,
 		arg.ID,
@@ -196,9 +194,6 @@ func (q *Queries) GetUserBudgetsPaged(ctx context.Context, arg GetUserBudgetsPag
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -211,14 +206,14 @@ WHERE category_id = $1 AND start_date <= $3 AND end_date >= $3
 `
 
 type UpdateBudgetAmountParams struct {
-	CategoryID uuid.UUID
-	Amount     string
-	StartDate  time.Time
+	CategoryID uuid.UUID       `json:"category_id"`
+	Amount     decimal.Decimal `json:"amount"`
+	StartDate  time.Time       `json:"start_date"`
 }
 
 // Since UpdateBudgetAmount is only called by the API, there is no need to
 // check if the user is the owner of the budget since the API already does that
 func (q *Queries) UpdateBudgetAmount(ctx context.Context, arg UpdateBudgetAmountParams) error {
-	_, err := q.db.ExecContext(ctx, updateBudgetAmount, arg.CategoryID, arg.Amount, arg.StartDate)
+	_, err := q.db.Exec(ctx, updateBudgetAmount, arg.CategoryID, arg.Amount, arg.StartDate)
 	return err
 }

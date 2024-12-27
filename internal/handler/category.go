@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jamcunha/expense-tracker/internal/model"
-	repo "github.com/jamcunha/expense-tracker/internal/repository/category"
+	"github.com/jackc/pgx/v5"
+	"github.com/jamcunha/expense-tracker/internal/repository"
 )
 
 type Category struct {
-	Repo repo.Repo
+	DB      *pgx.Conn
+	Queries *repository.Queries
 }
 
 func (h *Category) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -27,8 +28,11 @@ func (h *Category) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	c, err := h.Repo.FindByID(r.Context(), id, userID)
-	if errors.Is(err, repo.ErrNotFound) {
+	c, err := h.Queries.GetCategoryByID(r.Context(), repository.GetCategoryByIDParams{
+		ID:     id,
+		UserID: userID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -71,11 +75,32 @@ func (h *Category) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	categories, err := h.Repo.FindAll(r.Context(), userID, repo.FindAllPage{
-		Limit:  int32(limit),
-		Cursor: cursor,
-	})
-	if errors.Is(err, repo.ErrNotFound) {
+	var categories []repository.Category
+
+	if cursor == "" {
+		categories, err = h.Queries.GetUserCategories(
+			r.Context(),
+			repository.GetUserCategoriesParams{
+				UserID: userID,
+				Limit:  int32(limit),
+			},
+		)
+	} else {
+		t, id, err := decodeCursor(cursor)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		categories, err = h.Queries.GetUserCategoriesPaged(r.Context(), repository.GetUserCategoriesPagedParams{
+			UserID:    userID,
+			CreatedAt: t,
+			ID:        id,
+			Limit:     int32(limit),
+		})
+	}
+
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -88,12 +113,17 @@ func (h *Category) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var response struct {
-		Categories []model.Category `json:"categories"`
-		Next       string           `json:"next,omitempty"`
+		Categories []repository.Category `json:"categories"`
+		Next       string                `json:"next,omitempty"`
 	}
 
-	response.Categories = categories.Categories
-	response.Next = categories.Cursor
+	response.Categories = categories
+	response.Next = ""
+
+	if len(categories) == int(limit) {
+		lastCategory := categories[len(categories)-1]
+		cursor = encodeCursor(lastCategory.CreatedAt, lastCategory.ID)
+	}
 
 	res, err := json.Marshal(response)
 	if err != nil {
@@ -121,15 +151,13 @@ func (h *Category) Create(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(uuid.UUID)
 
 	now := time.Now()
-	c := model.Category{
+	c, err := h.Queries.CreateCategory(r.Context(), repository.CreateCategoryParams{
 		ID:        uuid.New(),
 		CreatedAt: now,
 		UpdatedAt: now,
 		Name:      body.Name,
 		UserID:    userID,
-	}
-
-	c, err := h.Repo.Create(r.Context(), c)
+	})
 	if err != nil {
 		fmt.Println("failed to insert:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -169,9 +197,13 @@ func (h *Category) Update(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	c, err := h.Repo.FindByID(r.Context(), id, userID)
+	// TODO: test if the update throws pgx.ErrNoRows
+	c, err := h.Queries.GetCategoryByID(r.Context(), repository.GetCategoryByIDParams{
+		ID:     id,
+		UserID: userID,
+	})
 
-	if errors.Is(err, repo.ErrNotFound) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -183,9 +215,14 @@ func (h *Category) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err = h.Repo.Update(r.Context(), body.Name, id, userID)
+	c, err = h.Queries.UpdateCategory(r.Context(), repository.UpdateCategoryParams{
+		Name:      body.Name,
+		UpdatedAt: time.Now(),
+		ID:        id,
+		UserID:    userID,
+	})
 
-	if errors.Is(err, repo.ErrNotFound) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -220,8 +257,11 @@ func (h *Category) DeleteByID(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	user, err := h.Repo.Delete(r.Context(), id, userID)
-	if errors.Is(err, repo.ErrNotFound) {
+	c, err := h.Queries.DeleteCategory(r.Context(), repository.DeleteCategoryParams{
+		ID:     id,
+		UserID: userID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -233,7 +273,7 @@ func (h *Category) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := json.Marshal(user)
+	res, err := json.Marshal(c)
 	if err != nil {
 		fmt.Println("failed to marshal:", err)
 		w.WriteHeader(http.StatusInternalServerError)

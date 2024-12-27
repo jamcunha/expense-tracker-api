@@ -3,7 +3,7 @@
 //   sqlc v1.27.0
 // source: users.sql
 
-package database
+package repository
 
 import (
 	"context"
@@ -19,16 +19,16 @@ RETURNING id, created_at, updated_at, name, email, password
 `
 
 type CreateUserParams struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Name      string
-	Email     string
-	Password  string
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Password  string    `json:"password"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
+	row := q.db.QueryRow(ctx, createUser,
 		arg.ID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -53,7 +53,7 @@ DELETE FROM users WHERE id = $1 RETURNING id, created_at, updated_at, name, emai
 `
 
 func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, deleteUser, id)
+	row := q.db.QueryRow(ctx, deleteUser, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -73,7 +73,7 @@ SELECT id, created_at, updated_at, name, email, password FROM users WHERE email 
 // NOTE: Use this in login only to get the user and then
 // compare the hashed password with the one provided by the user
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -91,7 +91,7 @@ SELECT id, created_at, updated_at, name, email, password FROM users WHERE id = $
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
