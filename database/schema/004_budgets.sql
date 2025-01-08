@@ -8,8 +8,8 @@ CREATE TABLE budgets (
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
 
-    amount NUMERIC(10, 4) NOT NULL,
-    goal NUMERIC(10, 4) NOT NULL,
+    amount NUMERIC(10, 2) NOT NULL,
+    goal NUMERIC(10, 2) NOT NULL,
     start_date TIMESTAMPTZ NOT NULL,
     end_date TIMESTAMPTZ NOT NULL,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

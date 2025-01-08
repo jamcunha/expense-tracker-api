@@ -25,3 +25,7 @@ migration/up:
 .PHONY: migration/down
 migration/down:
 	goose -dir ./database/schema postgres "postgres://postgres:postgres@localhost:5432/local-db?sslmode=disable" down
+
+.PHONY: migration/reset
+migration/reset:
+	goose -dir ./database/schema postgres "postgres://postgres:postgres@localhost:5432/local-db?sslmode=disable" reset
