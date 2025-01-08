@@ -21,7 +21,7 @@ type App struct {
 }
 
 func New(config Config) (*App, error) {
-	conn, err := pgx.Connect(context.Background(), *config.PostgresUrl)
+	conn, err := pgx.Connect(context.Background(), config.PostgresUrl)
 	if err != nil {
 		return &App{}, fmt.Errorf("error opening database connection: %w", err)
 	}

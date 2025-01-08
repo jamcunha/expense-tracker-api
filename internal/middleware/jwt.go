@@ -28,8 +28,6 @@ func JWTAuth(next http.Handler, jwtSecret string) http.Handler {
 				jwtSecret,
 			)
 			if errors.Is(err, ErrExpiredToken) {
-				// NOTE: Should the refresh be handled here or let the front end take care of it?
-
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 

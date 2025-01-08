@@ -197,25 +197,7 @@ func (h *Category) Update(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	// TODO: test if the update throws pgx.ErrNoRows
-	c, err := h.Queries.GetCategoryByID(r.Context(), repository.GetCategoryByIDParams{
-		ID:     id,
-		UserID: userID,
-	})
-
-	if errors.Is(err, pgx.ErrNoRows) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-
-		w.Write([]byte(`{"error": "Category does not exist"}`))
-		return
-	} else if err != nil {
-		fmt.Println("failed to find:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	c, err = h.Queries.UpdateCategory(r.Context(), repository.UpdateCategoryParams{
+	c, err := h.Queries.UpdateCategory(r.Context(), repository.UpdateCategoryParams{
 		Name:      body.Name,
 		UpdatedAt: time.Now(),
 		ID:        id,

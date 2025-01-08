@@ -37,8 +37,6 @@ WHERE id = $5 AND user_id = $6 RETURNING *;
 -- name: GetExpenseByID :one
 SELECT * FROM expenses WHERE id = $1 AND user_id = $2;
 
--- NOTE: both folowing queries are private to the API, not used by the client (might be made public in the future)
-
 -- name: GetTotalSpent :one
 SELECT CAST(SUM(amount) AS NUMERIC(10, 4)) FROM expenses
 WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3;

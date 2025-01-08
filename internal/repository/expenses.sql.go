@@ -192,7 +192,6 @@ func (q *Queries) GetExpenseByID(ctx context.Context, arg GetExpenseByIDParams) 
 }
 
 const getTotalSpent = `-- name: GetTotalSpent :one
-
 SELECT CAST(SUM(amount) AS NUMERIC(10, 4)) FROM expenses
 WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
 `
@@ -203,7 +202,6 @@ type GetTotalSpentParams struct {
 	CreatedAt_2 time.Time `json:"created_at_2"`
 }
 
-// NOTE: both folowing queries are private to the API, not used by the client (might be made public in the future)
 func (q *Queries) GetTotalSpent(ctx context.Context, arg GetTotalSpentParams) (decimal.Decimal, error) {
 	row := q.db.QueryRow(ctx, getTotalSpent, arg.UserID, arg.CreatedAt, arg.CreatedAt_2)
 	var column_1 decimal.Decimal

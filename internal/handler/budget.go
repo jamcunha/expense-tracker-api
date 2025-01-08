@@ -199,8 +199,6 @@ func (h *Budget) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 
-	// NOTE: Maybe add triggers for stuff related to data consistency
-	//       (leave it all in the database layer)
 	qtx := h.Queries.WithTx(tx)
 
 	amount, err := qtx.GetTotalSpentInCategory(
