@@ -31,6 +31,8 @@ ORDER BY created_at DESC, id DESC
 LIMIT $3;
 
 -- name: UpdateExpense :one
+-- No need to get nullable params since when using update it need to get the
+-- old values to update the budget
 UPDATE expenses SET description = $1, amount = $2, category_id = $3, updated_at = $4
 WHERE id = $5 AND user_id = $6 RETURNING *;
 
@@ -39,8 +41,8 @@ SELECT * FROM expenses WHERE id = $1 AND user_id = $2;
 
 -- name: GetTotalSpent :one
 SELECT CAST(SUM(amount) AS NUMERIC(10, 4)) FROM expenses
-WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3;
+WHERE user_id = $1 AND created_at >= sqlc.arg(start_date) AND created_at <= sqlc.arg(end_date);
 
 -- name: GetTotalSpentInCategory :one
 SELECT CAST(SUM(amount) AS NUMERIC(10, 4)) FROM expenses
-WHERE user_id = $1 AND category_id = $2 AND created_at >= $3 AND created_at <= $4;
+WHERE user_id = $1 AND category_id = $2 AND created_at >= sqlc.arg(start_date) AND created_at <= sqlc.arg(end_date);

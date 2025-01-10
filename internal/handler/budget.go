@@ -204,10 +204,10 @@ func (h *Budget) Create(w http.ResponseWriter, r *http.Request) {
 	amount, err := qtx.GetTotalSpentInCategory(
 		r.Context(),
 		repository.GetTotalSpentInCategoryParams{
-			UserID:      userID,
-			CategoryID:  categoryID,
-			CreatedAt:   startDate,
-			CreatedAt_2: endDate,
+			UserID:     userID,
+			CategoryID: categoryID,
+			StartDate:  startDate,
+			EndDate:    endDate,
 		},
 	)
 	if err != nil {

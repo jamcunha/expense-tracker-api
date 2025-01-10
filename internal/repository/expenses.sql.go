@@ -197,13 +197,13 @@ WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
 `
 
 type GetTotalSpentParams struct {
-	UserID      uuid.UUID `json:"user_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	CreatedAt_2 time.Time `json:"created_at_2"`
+	UserID    uuid.UUID `json:"user_id"`
+	StartDate time.Time `json:"start_date"`
+	EndDate   time.Time `json:"end_date"`
 }
 
 func (q *Queries) GetTotalSpent(ctx context.Context, arg GetTotalSpentParams) (decimal.Decimal, error) {
-	row := q.db.QueryRow(ctx, getTotalSpent, arg.UserID, arg.CreatedAt, arg.CreatedAt_2)
+	row := q.db.QueryRow(ctx, getTotalSpent, arg.UserID, arg.StartDate, arg.EndDate)
 	var column_1 decimal.Decimal
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -215,18 +215,18 @@ WHERE user_id = $1 AND category_id = $2 AND created_at >= $3 AND created_at <= $
 `
 
 type GetTotalSpentInCategoryParams struct {
-	UserID      uuid.UUID `json:"user_id"`
-	CategoryID  uuid.UUID `json:"category_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	CreatedAt_2 time.Time `json:"created_at_2"`
+	UserID     uuid.UUID `json:"user_id"`
+	CategoryID uuid.UUID `json:"category_id"`
+	StartDate  time.Time `json:"start_date"`
+	EndDate    time.Time `json:"end_date"`
 }
 
 func (q *Queries) GetTotalSpentInCategory(ctx context.Context, arg GetTotalSpentInCategoryParams) (decimal.Decimal, error) {
 	row := q.db.QueryRow(ctx, getTotalSpentInCategory,
 		arg.UserID,
 		arg.CategoryID,
-		arg.CreatedAt,
-		arg.CreatedAt_2,
+		arg.StartDate,
+		arg.EndDate,
 	)
 	var column_1 decimal.Decimal
 	err := row.Scan(&column_1)
@@ -333,6 +333,8 @@ type UpdateExpenseParams struct {
 	UserID      uuid.UUID       `json:"user_id"`
 }
 
+// No need to get nullable params since when using update it need to get the
+// old values to update the budget
 func (q *Queries) UpdateExpense(ctx context.Context, arg UpdateExpenseParams) (Expense, error) {
 	row := q.db.QueryRow(ctx, updateExpense,
 		arg.Description,
