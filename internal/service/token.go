@@ -1,4 +1,4 @@
-package handler
+package service
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ type Token struct {
 	JWTRefreshExp    time.Duration
 }
 
-func (h *Token) Create(w http.ResponseWriter, r *http.Request) {
+func (s *Token) Create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -34,7 +34,7 @@ func (h *Token) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.Queries.GetUserByEmail(r.Context(), body.Email)
+	u, err := s.Queries.GetUserByEmail(r.Context(), body.Email)
 	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -55,14 +55,14 @@ func (h *Token) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, err := createJWT(u, h.JWTAccessSecret, h.JWTAccessExp)
+	accessToken, err := createJWT(u, s.JWTAccessSecret, s.JWTAccessExp)
 	if err != nil {
 		fmt.Println("failed to create access token:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	refreshToken, err := createJWT(u, h.JWTRefreshSecret, h.JWTRefreshExp)
+	refreshToken, err := createJWT(u, s.JWTRefreshSecret, s.JWTRefreshExp)
 	if err != nil {
 		fmt.Println("failed to create refresh token:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -88,7 +88,7 @@ func (h *Token) Create(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *Token) Refresh(w http.ResponseWriter, r *http.Request) {
+func (s *Token) Refresh(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		RefreshToken string `json:"refresh_token"`
 	}
@@ -98,7 +98,7 @@ func (h *Token) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := validateJWT(body.RefreshToken, h.JWTRefreshSecret)
+	token, err := validateJWT(body.RefreshToken, s.JWTRefreshSecret)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -133,13 +133,13 @@ func (h *Token) Refresh(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error": "Invalid token"}`))
 	}
 
-	u, err := h.Queries.GetUserByID(r.Context(), userID)
+	u, err := s.Queries.GetUserByID(r.Context(), userID)
 	if err != nil {
 		fmt.Print("failed to query:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	accessToken, err := createJWT(u, h.JWTAccessSecret, h.JWTAccessExp)
+	accessToken, err := createJWT(u, s.JWTAccessSecret, s.JWTAccessExp)
 	if err != nil {
 		fmt.Println("failed to create access token:", err)
 		w.WriteHeader(http.StatusInternalServerError)

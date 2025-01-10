@@ -3,8 +3,8 @@ package application
 import (
 	"net/http"
 
-	"github.com/jamcunha/expense-tracker/internal/handler"
 	"github.com/jamcunha/expense-tracker/internal/middleware"
+	"github.com/jamcunha/expense-tracker/internal/service"
 )
 
 func (a *App) loadRoutes(prefix string) {
@@ -29,7 +29,7 @@ func (a *App) loadRoutes(prefix string) {
 }
 
 func (a *App) loadUserRoutes(r *http.ServeMux, prefix string) {
-	userHandler := &handler.User{
+	userService := &service.User{
 		DB:      a.DB,
 		Queries: a.Queries,
 	}
@@ -38,13 +38,13 @@ func (a *App) loadUserRoutes(r *http.ServeMux, prefix string) {
 
 	// NOTE: to restore password, add a route that requests the email and sends a token to the user
 	// and another route that receives the token and the new password
-	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(userHandler.GetByID))
-	r.HandleFunc("POST "+prefix, userHandler.Create)
-	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(userHandler.DeleteByID))
+	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(userService.GetByID))
+	r.HandleFunc("POST "+prefix, userService.Create)
+	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(userService.DeleteByID))
 }
 
 func (a *App) loadTokenRoutes(r *http.ServeMux, prefix string) {
-	tokenHandler := &handler.Token{
+	tokenService := &service.Token{
 		DB:               a.DB,
 		Queries:          a.Queries,
 		JWTAccessSecret:  a.config.JWTAccessSecret,
@@ -53,51 +53,51 @@ func (a *App) loadTokenRoutes(r *http.ServeMux, prefix string) {
 		JWTRefreshExp:    a.config.JWTRefreshExp,
 	}
 
-	r.HandleFunc("POST "+prefix, tokenHandler.Create)
-	r.HandleFunc("POST "+prefix+"/refresh", tokenHandler.Refresh)
+	r.HandleFunc("POST "+prefix, tokenService.Create)
+	r.HandleFunc("POST "+prefix+"/refresh", tokenService.Refresh)
 }
 
 func (a *App) loadCategoryRoutes(r *http.ServeMux, prefix string) {
-	categoryHandler := &handler.Category{
+	categoryService := &service.Category{
 		DB:      a.DB,
 		Queries: a.Queries,
 	}
 
 	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
 
-	r.Handle("GET "+prefix, jwtMiddleware(categoryHandler.GetAll))
-	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(categoryHandler.GetByID))
-	r.Handle("POST "+prefix, jwtMiddleware(categoryHandler.Create))
-	r.Handle("PUT "+prefix+"/{id}", jwtMiddleware(categoryHandler.Update))
-	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(categoryHandler.DeleteByID))
+	r.Handle("GET "+prefix, jwtMiddleware(categoryService.GetAll))
+	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(categoryService.GetByID))
+	r.Handle("POST "+prefix, jwtMiddleware(categoryService.Create))
+	r.Handle("PUT "+prefix+"/{id}", jwtMiddleware(categoryService.Update))
+	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(categoryService.DeleteByID))
 }
 
 func (a *App) loadExpenseRoutes(r *http.ServeMux, prefix string) {
-	expenseHandler := &handler.Expense{
+	expenseService := &service.Expense{
 		DB:      a.DB,
 		Queries: a.Queries,
 	}
 
 	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
 
-	r.Handle("GET "+prefix, jwtMiddleware(expenseHandler.GetAll))
-	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(expenseHandler.GetByID))
-	r.Handle("GET "+prefix+"/category/{id}", jwtMiddleware(expenseHandler.GetByCategory))
-	r.Handle("POST "+prefix, jwtMiddleware(expenseHandler.Create))
-	r.Handle("PUT "+prefix+"/{id}", jwtMiddleware(expenseHandler.Update))
-	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(expenseHandler.DeleteByID))
+	r.Handle("GET "+prefix, jwtMiddleware(expenseService.GetAll))
+	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(expenseService.GetByID))
+	r.Handle("GET "+prefix+"/category/{id}", jwtMiddleware(expenseService.GetByCategory))
+	r.Handle("POST "+prefix, jwtMiddleware(expenseService.Create))
+	r.Handle("PUT "+prefix+"/{id}", jwtMiddleware(expenseService.Update))
+	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(expenseService.DeleteByID))
 }
 
 func (a *App) loadBudgetRoutes(r *http.ServeMux, prefix string) {
-	budgetHandler := &handler.Budget{
+	budgetService := &service.Budget{
 		DB:      a.DB,
 		Queries: a.Queries,
 	}
 
 	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
 
-	r.Handle("GET "+prefix, jwtMiddleware(budgetHandler.GetAll))
-	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(budgetHandler.GetByID))
-	r.Handle("POST "+prefix, jwtMiddleware(budgetHandler.Create))
-	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(budgetHandler.DeleteByID))
+	r.Handle("GET "+prefix, jwtMiddleware(budgetService.GetAll))
+	r.Handle("GET "+prefix+"/{id}", jwtMiddleware(budgetService.GetByID))
+	r.Handle("POST "+prefix, jwtMiddleware(budgetService.Create))
+	r.Handle("DELETE "+prefix+"/{id}", jwtMiddleware(budgetService.DeleteByID))
 }

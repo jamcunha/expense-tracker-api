@@ -1,4 +1,4 @@
-package handler
+package service
 
 import (
 	"encoding/json"
@@ -11,14 +11,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jamcunha/expense-tracker/internal/repository"
+	"github.com/shopspring/decimal"
 )
 
-type Category struct {
+type Budget struct {
 	DB      *pgx.Conn
 	Queries *repository.Queries
 }
 
-func (h *Category) GetByID(w http.ResponseWriter, r *http.Request) {
+func (s *Budget) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		fmt.Println("Handler Error:", err)
@@ -28,7 +29,7 @@ func (h *Category) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	c, err := h.Queries.GetCategoryByID(r.Context(), repository.GetCategoryByIDParams{
+	b, err := s.Queries.GetBudgetByID(r.Context(), repository.GetBudgetByIDParams{
 		ID:     id,
 		UserID: userID,
 	})
@@ -36,7 +37,7 @@ func (h *Category) GetByID(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
-		w.Write([]byte(`{"error": "Category does not exist"}`))
+		w.Write([]byte(`{"error": "Budget does not exist"}`))
 		return
 	} else if err != nil {
 		fmt.Print("failed to insert:", err)
@@ -44,10 +45,11 @@ func (h *Category) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := json.Marshal(c)
+	res, err := json.Marshal(b)
 	if err != nil {
 		fmt.Println("failed to marshal:", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -56,7 +58,7 @@ func (h *Category) GetByID(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *Category) GetAll(w http.ResponseWriter, r *http.Request) {
+func (s *Budget) GetAll(w http.ResponseWriter, r *http.Request) {
 	limitStr := r.URL.Query().Get("limit")
 	if limitStr == "" {
 		limitStr = "10"
@@ -75,16 +77,13 @@ func (h *Category) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	var categories []repository.Category
+	var budgets []repository.Budget
 
 	if cursor == "" {
-		categories, err = h.Queries.GetUserCategories(
-			r.Context(),
-			repository.GetUserCategoriesParams{
-				UserID: userID,
-				Limit:  int32(limit),
-			},
-		)
+		budgets, err = s.Queries.GetUserBudgets(r.Context(), repository.GetUserBudgetsParams{
+			UserID: userID,
+			Limit:  int32(limit),
+		})
 	} else {
 		t, id, err := decodeCursor(cursor)
 		if err != nil {
@@ -92,7 +91,7 @@ func (h *Category) GetAll(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		categories, err = h.Queries.GetUserCategoriesPaged(r.Context(), repository.GetUserCategoriesPagedParams{
+		budgets, err = s.Queries.GetUserBudgetsPaged(r.Context(), repository.GetUserBudgetsPagedParams{
 			UserID:    userID,
 			CreatedAt: t,
 			ID:        id,
@@ -104,25 +103,25 @@ func (h *Category) GetAll(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
-		w.Write([]byte(`{"error": "No categories found"}`))
+		w.Write([]byte(`{"error": "No budgets found"}`))
 		return
 	} else if err != nil {
-		fmt.Println("failed to find:", err)
+		fmt.Print("failed to find:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	var response struct {
-		Categories []repository.Category `json:"categories"`
-		Next       string                `json:"next,omitempty"`
+		Budgets []repository.Budget `json:"budgets"`
+		Next    string              `json:"next,omitempty"`
 	}
 
-	response.Categories = categories
+	response.Budgets = budgets
 	response.Next = ""
 
-	if len(categories) == int(limit) {
-		lastCategory := categories[len(categories)-1]
-		cursor = encodeCursor(lastCategory.CreatedAt, lastCategory.ID)
+	if len(budgets) == int(limit) {
+		lastBudget := budgets[len(budgets)-1]
+		response.Next = encodeCursor(lastBudget.CreatedAt, lastBudget.ID)
 	}
 
 	res, err := json.Marshal(response)
@@ -138,9 +137,12 @@ func (h *Category) GetAll(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *Category) Create(w http.ResponseWriter, r *http.Request) {
+func (s *Budget) Create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name string `json:"name"`
+		Goal       float64 `json:"goal"`
+		StartDate  string  `json:"start_date"`
+		EndDate    string  `json:"end_date"`
+		CategoryID string  `json:"category_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -149,24 +151,87 @@ func (h *Category) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := r.Context().Value("userID").(uuid.UUID)
+	categoryID, err := uuid.Parse(body.CategoryID)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+
+		w.Write([]byte(`{"error": "Invalid category ID"}`))
+		return
+	}
+
+	startDate, err := time.Parse(time.DateOnly, body.StartDate)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+
+		w.Write([]byte(`{"error": "Invalid date format. Use YYYY-MM-DD"}`))
+		return
+	}
+
+	endDate, err := time.Parse(time.DateOnly, body.EndDate)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+
+		w.Write([]byte(`{"error": "Invalid date format. Use YYYY-MM-DD"}`))
+		return
+	}
 
 	now := time.Now()
-	c, err := h.Queries.CreateCategory(r.Context(), repository.CreateCategoryParams{
+	budgetParams := repository.CreateBudgetParams{
 		ID:        uuid.New(),
 		CreatedAt: now,
 		UpdatedAt: now,
-		Name:      body.Name,
-		UserID:    userID,
-	})
+
+		Amount:     decimal.Zero,
+		Goal:       decimal.NewFromFloat(body.Goal),
+		StartDate:  startDate,
+		EndDate:    endDate,
+		UserID:     userID,
+		CategoryID: categoryID,
+	}
+
+	tx, err := s.DB.Begin(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	qtx := s.Queries.WithTx(tx)
+
+	amount, err := qtx.GetTotalSpentInCategory(
+		r.Context(),
+		repository.GetTotalSpentInCategoryParams{
+			UserID:     userID,
+			CategoryID: categoryID,
+			StartDate:  startDate,
+			EndDate:    endDate,
+		},
+	)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	budgetParams.Amount = amount
+
+	b, err := qtx.CreateBudget(r.Context(), budgetParams)
 	if err != nil {
 		fmt.Println("failed to insert:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	res, err := json.Marshal(c)
+	res, err := json.Marshal(b)
 	if err != nil {
 		fmt.Println("failed to marshal:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if tx.Commit(r.Context()) != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -177,7 +242,7 @@ func (h *Category) Create(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *Category) Update(w http.ResponseWriter, r *http.Request) {
+func (s *Budget) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		fmt.Println("Handler Error:", err)
@@ -185,61 +250,9 @@ func (h *Category) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var body struct {
-		Name string `json:"name"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-
-	}
-
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	c, err := h.Queries.UpdateCategory(r.Context(), repository.UpdateCategoryParams{
-		Name:      body.Name,
-		UpdatedAt: time.Now(),
-		ID:        id,
-		UserID:    userID,
-	})
-
-	if errors.Is(err, pgx.ErrNoRows) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-
-		w.Write([]byte(`{"error": "Category does not exist"}`))
-		return
-	} else if err != nil {
-		fmt.Println("failed to update:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	res, err := json.Marshal(c)
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(res)
-}
-
-func (h *Category) DeleteByID(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		fmt.Println("Hander Error: ", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	userID := r.Context().Value("userID").(uuid.UUID)
-
-	c, err := h.Queries.DeleteCategory(r.Context(), repository.DeleteCategoryParams{
+	b, err := s.Queries.DeleteBudget(r.Context(), repository.DeleteBudgetParams{
 		ID:     id,
 		UserID: userID,
 	})
@@ -247,7 +260,7 @@ func (h *Category) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
-		w.Write([]byte(`{"error": "Category does not exist"}`))
+		w.Write([]byte(`{"error": "Budget does not exist"}`))
 		return
 	} else if err != nil {
 		fmt.Println("failed to delete:", err)
@@ -255,7 +268,7 @@ func (h *Category) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := json.Marshal(c)
+	res, err := json.Marshal(b)
 	if err != nil {
 		fmt.Println("failed to marshal:", err)
 		w.WriteHeader(http.StatusInternalServerError)

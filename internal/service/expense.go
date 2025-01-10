@@ -1,4 +1,4 @@
-package handler
+package service
 
 import (
 	"encoding/json"
@@ -19,7 +19,7 @@ type Expense struct {
 	Queries *repository.Queries
 }
 
-func (h *Expense) GetByID(w http.ResponseWriter, r *http.Request) {
+func (s *Expense) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		fmt.Println("Handler Error:", err)
@@ -29,7 +29,7 @@ func (h *Expense) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	e, err := h.Queries.GetExpenseByID(r.Context(), repository.GetExpenseByIDParams{
+	e, err := s.Queries.GetExpenseByID(r.Context(), repository.GetExpenseByIDParams{
 		ID:     id,
 		UserID: userID,
 	})
@@ -58,7 +58,7 @@ func (h *Expense) GetByID(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *Expense) GetAll(w http.ResponseWriter, r *http.Request) {
+func (s *Expense) GetAll(w http.ResponseWriter, r *http.Request) {
 	limitStr := r.URL.Query().Get("limit")
 	if limitStr == "" {
 		limitStr = "10"
@@ -80,7 +80,7 @@ func (h *Expense) GetAll(w http.ResponseWriter, r *http.Request) {
 	var expenses []repository.Expense
 
 	if cursor == "" {
-		expenses, err = h.Queries.GetUserExpenses(r.Context(), repository.GetUserExpensesParams{
+		expenses, err = s.Queries.GetUserExpenses(r.Context(), repository.GetUserExpensesParams{
 			UserID: userID,
 			Limit:  int32(limit),
 		})
@@ -91,7 +91,7 @@ func (h *Expense) GetAll(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		expenses, err = h.Queries.GetUserExpensesPaged(r.Context(), repository.GetUserExpensesPagedParams{
+		expenses, err = s.Queries.GetUserExpensesPaged(r.Context(), repository.GetUserExpensesPagedParams{
 			UserID:    userID,
 			CreatedAt: t,
 			ID:        id,
@@ -137,7 +137,7 @@ func (h *Expense) GetAll(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *Expense) GetByCategory(w http.ResponseWriter, r *http.Request) {
+func (s *Expense) GetByCategory(w http.ResponseWriter, r *http.Request) {
 	limitStr := r.URL.Query().Get("limit")
 	if limitStr == "" {
 		limitStr = "10"
@@ -166,7 +166,7 @@ func (h *Expense) GetByCategory(w http.ResponseWriter, r *http.Request) {
 	var expenses []repository.Expense
 
 	if cursor == "" {
-		expenses, err = h.Queries.GetCategoryExpenses(
+		expenses, err = s.Queries.GetCategoryExpenses(
 			r.Context(),
 			repository.GetCategoryExpensesParams{
 				CategoryID: categoryID,
@@ -181,7 +181,7 @@ func (h *Expense) GetByCategory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		expenses, err = h.Queries.GetCategoryExpensesPaged(r.Context(), repository.GetCategoryExpensesPagedParams{
+		expenses, err = s.Queries.GetCategoryExpensesPaged(r.Context(), repository.GetCategoryExpensesPagedParams{
 			CategoryID: categoryID,
 			UserID:     userID,
 			CreatedAt:  t,
@@ -228,7 +228,7 @@ func (h *Expense) GetByCategory(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *Expense) Create(w http.ResponseWriter, r *http.Request) {
+func (s *Expense) Create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Description string    `json:"description"`
 		Amount      float64   `json:"amount"`
@@ -243,7 +243,7 @@ func (h *Expense) Create(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(uuid.UUID)
 
 	now := time.Now()
-	e, err := h.Queries.CreateExpense(r.Context(), repository.CreateExpenseParams{
+	e, err := s.Queries.CreateExpense(r.Context(), repository.CreateExpenseParams{
 		ID:        uuid.New(),
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -272,7 +272,7 @@ func (h *Expense) Create(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *Expense) DeleteByID(w http.ResponseWriter, r *http.Request) {
+func (s *Expense) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		fmt.Println("Handler Error:", err)
@@ -282,14 +282,14 @@ func (h *Expense) DeleteByID(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	tx, err := h.DB.Begin(r.Context())
+	tx, err := s.DB.Begin(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback(r.Context())
 
-	qtx := h.Queries.WithTx(tx)
+	qtx := s.Queries.WithTx(tx)
 
 	e, err := qtx.DeleteExpense(r.Context(), repository.DeleteExpenseParams{
 		ID:     id,
@@ -335,7 +335,7 @@ func (h *Expense) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *Expense) Update(w http.ResponseWriter, r *http.Request) {
+func (s *Expense) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		fmt.Println("Handler Error:", err)
@@ -367,14 +367,14 @@ func (h *Expense) Update(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	tx, err := h.DB.Begin(r.Context())
+	tx, err := s.DB.Begin(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback(r.Context())
 
-	qtx := h.Queries.WithTx(tx)
+	qtx := s.Queries.WithTx(tx)
 
 	e, err := qtx.GetExpenseByID(r.Context(), repository.GetExpenseByIDParams{
 		ID:     id,

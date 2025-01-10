@@ -1,4 +1,4 @@
-package handler
+package service
 
 import (
 	"encoding/json"
@@ -36,7 +36,7 @@ func newUserResponse(u repository.User) userResponse {
 	}
 }
 
-func (h *User) GetByID(w http.ResponseWriter, r *http.Request) {
+func (s *User) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		fmt.Println("Handler Error:", err)
@@ -44,7 +44,7 @@ func (h *User) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.Queries.GetUserByID(r.Context(), id)
+	u, err := s.Queries.GetUserByID(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -68,7 +68,7 @@ func (h *User) GetByID(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *User) Create(w http.ResponseWriter, r *http.Request) {
+func (s *User) Create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Name     string `json:"name"`
 		Email    string `json:"email"`
@@ -91,7 +91,7 @@ func (h *User) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	u, err := h.Queries.CreateUser(r.Context(), repository.CreateUserParams{
+	u, err := s.Queries.CreateUser(r.Context(), repository.CreateUserParams{
 		ID:        uuid.New(),
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -118,7 +118,7 @@ func (h *User) Create(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func (h *User) DeleteByID(w http.ResponseWriter, r *http.Request) {
+func (s *User) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		fmt.Println("Handler Error:", err)
@@ -126,7 +126,7 @@ func (h *User) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.Queries.DeleteUser(r.Context(), id)
+	u, err := s.Queries.DeleteUser(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
