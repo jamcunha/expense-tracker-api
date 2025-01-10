@@ -6,12 +6,10 @@ import (
 	"time"
 )
 
-// NOTE: for now database options are just pointers (nil if option is not used).
-// For a more interchangable config it could be a DatabaseConfig struct/interface.
 type Config struct {
 	ServerPort  string
-	PostgresUrl *string
-	// RedisUrl    *string
+	PostgresUrl string
+	// RedisUrl    string
 
 	JWTAccessSecret  string
 	JWTRefreshSecret string
@@ -65,7 +63,7 @@ func LoadConfig() (Config, error) {
 	// For now it's required since it's the only database supported
 	// but this config gives the option to add more databases
 	if dbUrl, exists := os.LookupEnv("DB_URL"); exists {
-		cfg.PostgresUrl = &dbUrl
+		cfg.PostgresUrl = dbUrl
 	} else {
 		return Config{}, fmt.Errorf("Environment variable DB_URL must be set")
 	}

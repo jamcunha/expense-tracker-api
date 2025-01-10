@@ -8,13 +8,32 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jamcunha/expense-tracker/internal/model"
-	repo "github.com/jamcunha/expense-tracker/internal/repository/user"
+	"github.com/jackc/pgx/v5"
+	"github.com/jamcunha/expense-tracker/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
-	Repo repo.Repo
+	DB      *pgx.Conn
+	Queries *repository.Queries
+}
+
+type userResponse struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+}
+
+func newUserResponse(u repository.User) userResponse {
+	return userResponse{
+		ID:        u.ID,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+		Name:      u.Name,
+		Email:     u.Email,
+	}
 }
 
 func (h *User) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -25,20 +44,19 @@ func (h *User) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.Repo.FindByID(r.Context(), id)
-	if errors.Is(err, repo.ErrNotFound) {
+	u, err := h.Queries.GetUserByID(r.Context(), id)
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
 		w.Write([]byte(`{"error": "User does not exist"}`))
 		return
 	} else if err != nil {
-		fmt.Print("failed to insert:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	res, err := json.Marshal(u)
+	res, err := json.Marshal(newUserResponse(u))
 	if err != nil {
 		fmt.Println("failed to marshal:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -73,23 +91,21 @@ func (h *User) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	u := model.User{
+	u, err := h.Queries.CreateUser(r.Context(), repository.CreateUserParams{
 		ID:        uuid.New(),
 		CreatedAt: now,
 		UpdatedAt: now,
 		Name:      body.Name,
 		Email:     body.Email,
 		Password:  string(encryptedPassword),
-	}
-
-	u, err = h.Repo.Create(r.Context(), u)
+	})
 	if err != nil {
 		fmt.Println("failed to insert:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	res, err := json.Marshal(u)
+	res, err := json.Marshal(newUserResponse(u))
 	if err != nil {
 		fmt.Println("failed to marshal:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -110,8 +126,8 @@ func (h *User) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.Repo.Delete(r.Context(), id)
-	if errors.Is(err, repo.ErrNotFound) {
+	u, err := h.Queries.DeleteUser(r.Context(), id)
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -124,7 +140,7 @@ func (h *User) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := json.Marshal(user)
+	res, err := json.Marshal(newUserResponse(u))
 	if err != nil {
 		fmt.Println("failed to marshal:", err)
 		w.WriteHeader(http.StatusInternalServerError)

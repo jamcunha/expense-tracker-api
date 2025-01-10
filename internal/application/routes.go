@@ -5,10 +5,6 @@ import (
 
 	"github.com/jamcunha/expense-tracker/internal/handler"
 	"github.com/jamcunha/expense-tracker/internal/middleware"
-	"github.com/jamcunha/expense-tracker/internal/repository/budget"
-	"github.com/jamcunha/expense-tracker/internal/repository/category"
-	"github.com/jamcunha/expense-tracker/internal/repository/expense"
-	"github.com/jamcunha/expense-tracker/internal/repository/user"
 )
 
 func (a *App) loadRoutes(prefix string) {
@@ -34,10 +30,8 @@ func (a *App) loadRoutes(prefix string) {
 
 func (a *App) loadUserRoutes(r *http.ServeMux, prefix string) {
 	userHandler := &handler.User{
-		Repo: &user.SqlcRepo{
-			DB:      a.DB,
-			Queries: a.Queries,
-		},
+		DB:      a.DB,
+		Queries: a.Queries,
 	}
 
 	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
@@ -51,10 +45,8 @@ func (a *App) loadUserRoutes(r *http.ServeMux, prefix string) {
 
 func (a *App) loadTokenRoutes(r *http.ServeMux, prefix string) {
 	tokenHandler := &handler.Token{
-		Repo: &user.SqlcRepo{
-			DB:      a.DB,
-			Queries: a.Queries,
-		},
+		DB:               a.DB,
+		Queries:          a.Queries,
 		JWTAccessSecret:  a.config.JWTAccessSecret,
 		JWTRefreshSecret: a.config.JWTRefreshSecret,
 		JWTAccessExp:     a.config.JWTAccessExp,
@@ -67,10 +59,8 @@ func (a *App) loadTokenRoutes(r *http.ServeMux, prefix string) {
 
 func (a *App) loadCategoryRoutes(r *http.ServeMux, prefix string) {
 	categoryHandler := &handler.Category{
-		Repo: &category.SqlcRepo{
-			DB:      a.DB,
-			Queries: a.Queries,
-		},
+		DB:      a.DB,
+		Queries: a.Queries,
 	}
 
 	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
@@ -84,10 +74,8 @@ func (a *App) loadCategoryRoutes(r *http.ServeMux, prefix string) {
 
 func (a *App) loadExpenseRoutes(r *http.ServeMux, prefix string) {
 	expenseHandler := &handler.Expense{
-		Repo: &expense.SqlcRepo{
-			DB:      a.DB,
-			Queries: a.Queries,
-		},
+		DB:      a.DB,
+		Queries: a.Queries,
 	}
 
 	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }
@@ -102,10 +90,8 @@ func (a *App) loadExpenseRoutes(r *http.ServeMux, prefix string) {
 
 func (a *App) loadBudgetRoutes(r *http.ServeMux, prefix string) {
 	budgetHandler := &handler.Budget{
-		Repo: &budget.SqlcRepo{
-			DB:      a.DB,
-			Queries: a.Queries,
-		},
+		DB:      a.DB,
+		Queries: a.Queries,
 	}
 
 	jwtMiddleware := func(f http.HandlerFunc) http.Handler { return middleware.JWTAuth(f, a.config.JWTAccessSecret) }

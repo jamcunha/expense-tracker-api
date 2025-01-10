@@ -2,11 +2,11 @@
 
 CREATE TABLE expenses (
     id UUID PRIMARY KEY,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
 
     description TEXT NOT NULL,
-    amount NUMERIC(10, 4) NOT NULL,
+    amount NUMERIC(10, 2) NOT NULL,
     category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE, -- NOTE: here might be better to set NULL instead of deleting
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
 );

@@ -2,34 +2,33 @@ package application
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/jamcunha/expense-tracker/internal/database"
 	"github.com/jamcunha/expense-tracker/internal/middleware"
+	"github.com/jamcunha/expense-tracker/internal/repository"
 
-	_ "github.com/lib/pq" // find if there is a way to add this by default to sqlc generated files
+	"github.com/jackc/pgx/v5"
 )
 
 type App struct {
 	router *http.ServeMux
 
-	DB      *sql.DB
-	Queries *database.Queries
+	DB      *pgx.Conn
+	Queries *repository.Queries
 	config  Config
 }
 
 func New(config Config) (*App, error) {
-	conn, err := sql.Open("postgres", *config.PostgresUrl)
+	conn, err := pgx.Connect(context.Background(), config.PostgresUrl)
 	if err != nil {
 		return &App{}, fmt.Errorf("error opening database connection: %w", err)
 	}
 
 	app := &App{
 		DB:      conn,
-		Queries: database.New(conn),
+		Queries: repository.New(conn),
 		config:  config,
 	}
 	app.loadRoutes("/api/v1")
@@ -59,8 +58,10 @@ func (a *App) Start(ctx context.Context) error {
 		timeout, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 
+		a.DB.Close(ctx)
 		return server.Shutdown(timeout)
 	case err := <-ch:
+		a.DB.Close(ctx)
 		return err
 	}
 }

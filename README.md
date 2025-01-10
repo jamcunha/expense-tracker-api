@@ -47,8 +47,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337.728337Z",
             "name": "John Doe",
             "email": "john@doe.com"
         }
@@ -69,8 +69,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "name": "John Doe",
             "email": "john@doe.com"
         }
@@ -86,8 +86,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "name": "John Doe",
             "email": "john@doe.com"
         }
@@ -147,15 +147,15 @@ The API will return the total amount spent in a category in a given interval, wh
         [
             {
                 "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-                "created_at": "2021-07-25T20:00:00Z",
-                "updated_at": "2021-07-25T20:00:00Z",
+                "created_at": "2021-07-25T20:00:00.728337Z",
+                "updated_at": "2021-07-25T20:00:00.728337Z",
                 "name": "Food",
                 "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31"
             },
             {
                 "id": "527fef18-e8f9-4899-b807-3c9c94415b32",
-                "created_at": "2021-07-25T20:00:00Z",
-                "updated_at": "2021-07-25T20:00:00Z",
+                "created_at": "2021-07-25T20:00:00.728337Z",
+                "updated_at": "2021-07-25T20:00:00.728337Z",
                 "name": "Transport",
                 "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31"
             }
@@ -171,8 +171,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "name": "Food",
             "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31"
         }
@@ -192,8 +192,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "name": "Food",
             "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31"
         }
@@ -213,8 +213,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "name": "Books",
             "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31"
         }
@@ -229,8 +229,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "name": "Books",
             "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31"
         }
@@ -252,8 +252,8 @@ The API will return the total amount spent in a category in a given interval, wh
         [
             {
                 "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-                "created_at": "2021-07-25T20:00:00Z",
-                "updated_at": "2021-07-25T20:00:00Z",
+                "created_at": "2021-07-25T20:00:00.728337Z",
+                "updated_at": "2021-07-25T20:00:00.728337Z",
                 "amount": 10.0,
                 "description": "Lunch",
                 "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
@@ -261,8 +261,8 @@ The API will return the total amount spent in a category in a given interval, wh
             },
             {
                 "id": "527fef18-e8f9-4899-b807-3c9c94415b32",
-                "created_at": "2021-07-25T20:00:00Z",
-                "updated_at": "2021-07-25T20:00:00Z",
+                "created_at": "2021-07-25T20:00:00.728337Z",
+                "updated_at": "2021-07-25T20:00:00.728337Z",
                 "amount": 5.0,
                 "description": "Bus ticket",
                 "category_id": "527fef18-e8f9-4899-b807-3c9c94415b32",
@@ -280,8 +280,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "amount": 10.0,
             "description": "Lunch",
             "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
@@ -299,8 +299,8 @@ The API will return the total amount spent in a category in a given interval, wh
         [
             {
                 "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-                "created_at": "2021-07-25T20:00:00Z",
-                "updated_at": "2021-07-25T20:00:00Z",
+                "created_at": "2021-07-25T20:00:00.728337Z",
+                "updated_at": "2021-07-25T20:00:00.728337Z",
                 "amount": 10.0,
                 "description": "Lunch",
                 "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
@@ -308,8 +308,8 @@ The API will return the total amount spent in a category in a given interval, wh
             },
             {
                 "id": "527fef18-e8f9-4899-b807-3c9c94415b32",
-                "created_at": "2021-07-25T20:00:00Z",
-                "updated_at": "2021-07-25T20:00:00Z",
+                "created_at": "2021-07-25T20:00:00.728337Z",
+                "updated_at": "2021-07-25T20:00:00.728337Z",
                 "amount": 5.75,
                 "description": "Dinner",
                 "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
@@ -334,8 +334,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "amount": 10.0,
             "description": "Lunch",
             "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
@@ -359,8 +359,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "amount": 15.0,
             "description": "Dinner",
             "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
@@ -377,8 +377,8 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "amount": 15.0,
             "description": "Dinner",
             "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
@@ -402,23 +402,23 @@ The API will return the total amount spent in a category in a given interval, wh
         [
             {
                 "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-                "created_at": "2021-07-25T20:00:00Z",
-                "updated_at": "2021-07-25T20:00:00Z",
+                "created_at": "2021-07-25T20:00:00.728337Z",
+                "updated_at": "2021-07-25T20:00:00.728337Z",
                 "amount": 100.0,
                 "goal": 450.0,
-                "start_date": "2021-07-01T00:00:00Z",
-                "end_date": "2021-07-31T23:59:59Z",
+                "start_date": "2021-07-01T00:00:00.728337Z",
+                "end_date": "2021-07-31T23:59:59.728337Z",
                 "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31"
                 "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
             },
             {
                 "id": "527fef18-e8f9-4899-b807-3c9c94415b32",
-                "created_at": "2021-07-25T20:00:00Z",
-                "updated_at": "2021-07-25T20:00:00Z",
+                "created_at": "2021-07-25T20:00:00.728337Z",
+                "updated_at": "2021-07-25T20:00:00.728337Z",
                 "amount": 50.0,
                 "goal": 200.0,
-                "start_date": "2021-07-01T00:00:00Z",
-                "end_date": "2021-07-31T23:59:59Z",
+                "start_date": "2021-07-01T00:00:00.728337Z",
+                "end_date": "2021-07-31T23:59:59.728337Z",
                 "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31"
                 "category_id": "527fef18-e8f9-4899-b807-3c9c94415b32",
             }
@@ -434,12 +434,12 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "amount": 100.0,
             "goal": 450.0,
-            "start_date": "2021-07-01T00:00:00Z",
-            "end_date": "2021-07-31T23:59:59Z",
+            "start_date": "2021-07-01T00:00:00.728337Z",
+            "end_date": "2021-07-31T23:59:59.728337Z",
             "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
             "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
         }
@@ -454,8 +454,8 @@ The API will return the total amount spent in a category in a given interval, wh
         {
             "amount": 100.0,
             "goal": 450.0,
-            "start_date": "2021-07-01T00:00:00Z",
-            "end_date": "2021-07-31T23:59:59Z",
+            "start_date": "2021-07-01T00:00:00.728337Z",
+            "end_date": "2021-07-31T23:59:59.728337Z",
             "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31"
         }
         ```
@@ -463,12 +463,12 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "amount": 100.0,
             "goal": 450.0,
-            "start_date": "2021-07-01T00:00:00Z",
-            "end_date": "2021-07-31T23:59:59Z",
+            "start_date": "2021-07-01T00:00:00.728337Z",
+            "end_date": "2021-07-31T23:59:59.728337Z",
             "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
             "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
         }
@@ -483,12 +483,12 @@ The API will return the total amount spent in a category in a given interval, wh
         ```json
         {
             "id": "527fef18-e8f9-4899-b807-3c9c94415b31",
-            "created_at": "2021-07-25T20:00:00Z",
-            "updated_at": "2021-07-25T20:00:00Z",
+            "created_at": "2021-07-25T20:00:00.728337Z",
+            "updated_at": "2021-07-25T20:00:00.728337Z",
             "amount": 100.0,
             "goal": 450.0,
-            "start_date": "2021-07-01T00:00:00Z",
-            "end_date": "2021-07-31T23:59:59Z",
+            "start_date": "2021-07-01T00:00:00.728337Z",
+            "end_date": "2021-07-31T23:59:59.728337Z",
             "user_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
             "category_id": "527fef18-e8f9-4899-b807-3c9c94415b31",
         }

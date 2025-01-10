@@ -9,13 +9,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jamcunha/expense-tracker/internal/model"
-	repo "github.com/jamcunha/expense-tracker/internal/repository/expense"
+	"github.com/jackc/pgx/v5"
+	"github.com/jamcunha/expense-tracker/internal/repository"
 	"github.com/shopspring/decimal"
 )
 
 type Expense struct {
-	Repo repo.Repo
+	DB      *pgx.Conn
+	Queries *repository.Queries
 }
 
 func (h *Expense) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -28,8 +29,11 @@ func (h *Expense) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	e, err := h.Repo.FindByID(r.Context(), id, userID)
-	if errors.Is(err, repo.ErrNotFound) {
+	e, err := h.Queries.GetExpenseByID(r.Context(), repository.GetExpenseByIDParams{
+		ID:     id,
+		UserID: userID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -73,11 +77,29 @@ func (h *Expense) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	expenses, err := h.Repo.FindAll(r.Context(), userID, repo.FindAllPage{
-		Limit:  int32(limit),
-		Cursor: cursor,
-	})
-	if errors.Is(err, repo.ErrNotFound) {
+	var expenses []repository.Expense
+
+	if cursor == "" {
+		expenses, err = h.Queries.GetUserExpenses(r.Context(), repository.GetUserExpensesParams{
+			UserID: userID,
+			Limit:  int32(limit),
+		})
+	} else {
+		t, id, err := decodeCursor(cursor)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		expenses, err = h.Queries.GetUserExpensesPaged(r.Context(), repository.GetUserExpensesPagedParams{
+			UserID:    userID,
+			CreatedAt: t,
+			ID:        id,
+			Limit:     int32(limit),
+		})
+	}
+
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -90,12 +112,17 @@ func (h *Expense) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var response struct {
-		Expenses []model.Expense `json:"expenses"`
-		Next     string          `json:"next,omitempty"`
+		Expenses []repository.Expense `json:"expenses"`
+		Next     string               `json:"next,omitempty"`
 	}
 
-	response.Expenses = expenses.Expenses
-	response.Next = expenses.Cursor
+	response.Expenses = expenses
+	response.Next = ""
+
+	if len(expenses) == int(limit) {
+		lastExpense := expenses[len(expenses)-1]
+		response.Next = encodeCursor(lastExpense.CreatedAt, lastExpense.ID)
+	}
 
 	res, err := json.Marshal(response)
 	if err != nil {
@@ -136,11 +163,34 @@ func (h *Expense) GetByCategory(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	expenses, err := h.Repo.FindByCategory(r.Context(), categoryID, userID, repo.FindAllPage{
-		Limit:  int32(limit),
-		Cursor: cursor,
-	})
-	if errors.Is(err, repo.ErrNotFound) {
+	var expenses []repository.Expense
+
+	if cursor == "" {
+		expenses, err = h.Queries.GetCategoryExpenses(
+			r.Context(),
+			repository.GetCategoryExpensesParams{
+				CategoryID: categoryID,
+				UserID:     userID,
+				Limit:      int32(limit),
+			},
+		)
+	} else {
+		t, id, err := decodeCursor(cursor)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		expenses, err = h.Queries.GetCategoryExpensesPaged(r.Context(), repository.GetCategoryExpensesPagedParams{
+			CategoryID: categoryID,
+			UserID:     userID,
+			CreatedAt:  t,
+			ID:         id,
+			Limit:      int32(limit),
+		})
+	}
+
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -153,12 +203,17 @@ func (h *Expense) GetByCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var response struct {
-		Expenses []model.Expense `json:"expenses"`
-		Next     string          `json:"next,omitempty"`
+		Expenses []repository.Expense `json:"expenses"`
+		Next     string               `json:"next,omitempty"`
 	}
 
-	response.Expenses = expenses.Expenses
-	response.Next = expenses.Cursor
+	response.Expenses = expenses
+	response.Next = ""
+
+	if len(expenses) == int(limit) {
+		lastExpenses := expenses[len(expenses)-1]
+		response.Next = encodeCursor(lastExpenses.CreatedAt, lastExpenses.ID)
+	}
 
 	res, err := json.Marshal(response)
 	if err != nil {
@@ -188,7 +243,7 @@ func (h *Expense) Create(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(uuid.UUID)
 
 	now := time.Now()
-	e := model.Expense{
+	e, err := h.Queries.CreateExpense(r.Context(), repository.CreateExpenseParams{
 		ID:        uuid.New(),
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -197,9 +252,7 @@ func (h *Expense) Create(w http.ResponseWriter, r *http.Request) {
 		Amount:      decimal.NewFromFloat(body.Amount),
 		CategoryID:  body.CategoryID,
 		UserID:      userID,
-	}
-
-	e, err := h.Repo.Create(r.Context(), e)
+	})
 	if err != nil {
 		fmt.Println("failed to insert:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -229,8 +282,20 @@ func (h *Expense) DeleteByID(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	expense, err := h.Repo.Delete(r.Context(), id, userID)
-	if errors.Is(err, repo.ErrNotFound) {
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	qtx := h.Queries.WithTx(tx)
+
+	e, err := qtx.DeleteExpense(r.Context(), repository.DeleteExpenseParams{
+		ID:     id,
+		UserID: userID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -242,9 +307,24 @@ func (h *Expense) DeleteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := json.Marshal(expense)
+	err = qtx.UpdateBudgetAmount(r.Context(), repository.UpdateBudgetAmountParams{
+		CategoryID: e.CategoryID,
+		Amount:     e.Amount.Neg(),
+		StartDate:  e.CreatedAt,
+	})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	res, err := json.Marshal(e)
 	if err != nil {
 		fmt.Println("failed to marshal:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if tx.Commit(r.Context()) != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -274,6 +354,8 @@ func (h *Expense) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	bodyAmount := decimal.NewFromFloat(body.Amount)
+
 	categoryID, err := uuid.Parse(body.CategoryID)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -285,16 +367,21 @@ func (h *Expense) Update(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userID").(uuid.UUID)
 
-	e, err := h.Repo.Update(r.Context(), repo.UpdateExpense{
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	qtx := h.Queries.WithTx(tx)
+
+	e, err := qtx.GetExpenseByID(r.Context(), repository.GetExpenseByIDParams{
 		ID:     id,
 		UserID: userID,
-
-		Description: body.Description,
-		Amount:      decimal.NewFromFloat(body.Amount),
-		CategoryID:  categoryID,
 	})
 
-	if errors.Is(err, repo.ErrNotFound) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
@@ -306,9 +393,66 @@ func (h *Expense) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	oldCategory := e.CategoryID
+	oldAmount := e.Amount
+
+	if body.Description == "" {
+		body.Description = e.Description
+	}
+
+	if bodyAmount.IsZero() {
+		bodyAmount = e.Amount
+	}
+
+	if categoryID == uuid.Nil {
+		categoryID = e.CategoryID
+	}
+
+	now := time.Now()
+	e, err = qtx.UpdateExpense(r.Context(), repository.UpdateExpenseParams{
+		ID:          id,
+		UserID:      userID,
+		Description: body.Description,
+		Amount:      bodyAmount,
+		CategoryID:  categoryID,
+		UpdatedAt:   now,
+	})
+	if err != nil {
+		fmt.Println("failed to update:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = qtx.UpdateBudgetAmount(r.Context(), repository.UpdateBudgetAmountParams{
+		CategoryID: oldCategory,
+		Amount:     oldAmount.Neg(),
+		StartDate:  e.CreatedAt,
+	})
+	if err != nil {
+		fmt.Println("failed to update:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = qtx.UpdateBudgetAmount(r.Context(), repository.UpdateBudgetAmountParams{
+		CategoryID: e.CategoryID,
+		Amount:     e.Amount,
+		StartDate:  e.UpdatedAt, // Should this be CreatedAt?
+	})
+	if err != nil {
+		fmt.Println("failed to update:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	res, err := json.Marshal(e)
 	if err != nil {
 		fmt.Println("failed to marshal:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if tx.Commit(r.Context()) != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
