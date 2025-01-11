@@ -1,15 +1,14 @@
 package service
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
-	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	cursor "github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 	"github.com/shopspring/decimal"
 )
@@ -19,79 +18,42 @@ type Budget struct {
 	Queries *repository.Queries
 }
 
-func (s *Budget) GetByID(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		fmt.Println("Handler Error:", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	userID := r.Context().Value("userID").(uuid.UUID)
-
-	b, err := s.Queries.GetBudgetByID(r.Context(), repository.GetBudgetByIDParams{
+func (s *Budget) GetByID(ctx context.Context, id, userID uuid.UUID) (repository.Budget, error) {
+	b, err := s.Queries.GetBudgetByID(ctx, repository.GetBudgetByIDParams{
 		ID:     id,
 		UserID: userID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-
-		w.Write([]byte(`{"error": "Budget does not exist"}`))
-		return
+		return repository.Budget{}, ErrBudgetNotFound
 	} else if err != nil {
 		fmt.Print("failed to insert:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return repository.Budget{}, err
 	}
 
-	res, err := json.Marshal(b)
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(res)
+	return b, nil
 }
 
-func (s *Budget) GetAll(w http.ResponseWriter, r *http.Request) {
-	limitStr := r.URL.Query().Get("limit")
-	if limitStr == "" {
-		limitStr = "10"
-	}
-
-	const decimal = 10
-	const bitSize = 32
-	limit, err := strconv.ParseInt(limitStr, decimal, bitSize)
-	if err != nil || limit < 1 {
-		fmt.Println("Handler Error:", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	cursor := r.URL.Query().Get("cursor")
-
-	userID := r.Context().Value("userID").(uuid.UUID)
-
+func (s *Budget) GetAll(
+	ctx context.Context,
+	userID uuid.UUID,
+	limit int32,
+	cur string,
+) ([]repository.Budget, error) {
 	var budgets []repository.Budget
+	var err error
 
-	if cursor == "" {
-		budgets, err = s.Queries.GetUserBudgets(r.Context(), repository.GetUserBudgetsParams{
+	if cur == "" {
+		budgets, err = s.Queries.GetUserBudgets(ctx, repository.GetUserBudgetsParams{
 			UserID: userID,
 			Limit:  int32(limit),
 		})
 	} else {
-		t, id, err := decodeCursor(cursor)
+		t, id, err := cursor.DecodeCursor(cur)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+			return []repository.Budget{}, ErrDecodeCursor
 		}
 
-		budgets, err = s.Queries.GetUserBudgetsPaged(r.Context(), repository.GetUserBudgetsPagedParams{
+		budgets, err = s.Queries.GetUserBudgetsPaged(ctx, repository.GetUserBudgetsPagedParams{
 			UserID:    userID,
 			CreatedAt: t,
 			ID:        id,
@@ -100,84 +62,21 @@ func (s *Budget) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-
-		w.Write([]byte(`{"error": "No budgets found"}`))
-		return
+		return []repository.Budget{}, ErrBudgetNotFound
 	} else if err != nil {
 		fmt.Print("failed to find:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return []repository.Budget{}, err
 	}
 
-	var response struct {
-		Budgets []repository.Budget `json:"budgets"`
-		Next    string              `json:"next,omitempty"`
-	}
-
-	response.Budgets = budgets
-	response.Next = ""
-
-	if len(budgets) == int(limit) {
-		lastBudget := budgets[len(budgets)-1]
-		response.Next = encodeCursor(lastBudget.CreatedAt, lastBudget.ID)
-	}
-
-	res, err := json.Marshal(response)
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(res)
+	return budgets, nil
 }
 
-func (s *Budget) Create(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Goal       float64 `json:"goal"`
-		StartDate  string  `json:"start_date"`
-		EndDate    string  `json:"end_date"`
-		CategoryID string  `json:"category_id"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	userID := r.Context().Value("userID").(uuid.UUID)
-	categoryID, err := uuid.Parse(body.CategoryID)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-
-		w.Write([]byte(`{"error": "Invalid category ID"}`))
-		return
-	}
-
-	startDate, err := time.Parse(time.DateOnly, body.StartDate)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-
-		w.Write([]byte(`{"error": "Invalid date format. Use YYYY-MM-DD"}`))
-		return
-	}
-
-	endDate, err := time.Parse(time.DateOnly, body.EndDate)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-
-		w.Write([]byte(`{"error": "Invalid date format. Use YYYY-MM-DD"}`))
-		return
-	}
-
+func (s *Budget) Create(
+	ctx context.Context,
+	userID, categoryID uuid.UUID,
+	goal decimal.Decimal,
+	startDate, endDate time.Time,
+) (repository.Budget, error) {
 	now := time.Now()
 	budgetParams := repository.CreateBudgetParams{
 		ID:        uuid.New(),
@@ -185,24 +84,23 @@ func (s *Budget) Create(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: now,
 
 		Amount:     decimal.Zero,
-		Goal:       decimal.NewFromFloat(body.Goal),
+		Goal:       goal,
 		StartDate:  startDate,
 		EndDate:    endDate,
 		UserID:     userID,
 		CategoryID: categoryID,
 	}
 
-	tx, err := s.DB.Begin(r.Context())
+	tx, err := s.DB.Begin(ctx)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return repository.Budget{}, err
 	}
-	defer tx.Rollback(r.Context())
+	defer tx.Rollback(ctx)
 
 	qtx := s.Queries.WithTx(tx)
 
 	amount, err := qtx.GetTotalSpentInCategory(
-		r.Context(),
+		ctx,
 		repository.GetTotalSpentInCategoryParams{
 			UserID:     userID,
 			CategoryID: categoryID,
@@ -210,73 +108,38 @@ func (s *Budget) Create(w http.ResponseWriter, r *http.Request) {
 			EndDate:    endDate,
 		},
 	)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if errors.Is(err, pgx.ErrNoRows) {
+		return repository.Budget{}, ErrCategoryNotFound
+	} else if err != nil {
+		return repository.Budget{}, err
 	}
 
 	budgetParams.Amount = amount
 
-	b, err := qtx.CreateBudget(r.Context(), budgetParams)
+	b, err := qtx.CreateBudget(ctx, budgetParams)
 	if err != nil {
 		fmt.Println("failed to insert:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return repository.Budget{}, err
 	}
 
-	res, err := json.Marshal(b)
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if err := tx.Commit(ctx); err != nil {
+		return repository.Budget{}, err
 	}
 
-	if tx.Commit(r.Context()) != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-
-	w.Write(res)
+	return b, nil
 }
 
-func (s *Budget) DeleteByID(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		fmt.Println("Handler Error:", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	userID := r.Context().Value("userID").(uuid.UUID)
-
-	b, err := s.Queries.DeleteBudget(r.Context(), repository.DeleteBudgetParams{
+func (s *Budget) DeleteByID(ctx context.Context, id, userID uuid.UUID) (repository.Budget, error) {
+	b, err := s.Queries.DeleteBudget(ctx, repository.DeleteBudgetParams{
 		ID:     id,
 		UserID: userID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-
-		w.Write([]byte(`{"error": "Budget does not exist"}`))
-		return
+		return repository.Budget{}, ErrBudgetNotFound
 	} else if err != nil {
 		fmt.Println("failed to delete:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return repository.Budget{}, err
 	}
 
-	res, err := json.Marshal(b)
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(res)
+	return b, nil
 }

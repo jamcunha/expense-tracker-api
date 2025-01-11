@@ -1,4 +1,4 @@
-package service
+package cursor
 
 import (
 	"encoding/base64"
@@ -11,7 +11,7 @@ import (
 
 // Util functions to encode and decode cursor for paged queries
 
-func decodeCursor(encodedCursor string) (time.Time, uuid.UUID, error) {
+func DecodeCursor(encodedCursor string) (time.Time, uuid.UUID, error) {
 	byt, err := base64.StdEncoding.DecodeString(encodedCursor)
 	if err != nil {
 		return time.Time{}, uuid.UUID{}, err
@@ -35,7 +35,7 @@ func decodeCursor(encodedCursor string) (time.Time, uuid.UUID, error) {
 	return t, id, nil
 }
 
-func encodeCursor(t time.Time, uuid uuid.UUID) string {
+func EncodeCursor(t time.Time, uuid uuid.UUID) string {
 	return base64.StdEncoding.EncodeToString([]byte(
 		fmt.Sprintf("%s,%s", t.Format(time.RFC3339Nano), uuid.String()),
 	))

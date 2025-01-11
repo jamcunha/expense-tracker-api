@@ -1,10 +1,9 @@
 package service
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -23,144 +22,70 @@ type Token struct {
 	JWTRefreshExp    time.Duration
 }
 
-func (s *Token) Create(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	u, err := s.Queries.GetUserByEmail(r.Context(), body.Email)
+func (s *Token) Create(
+	ctx context.Context,
+	email, password string,
+) (accessToken, refreshToken string, err error) {
+	u, err := s.Queries.GetUserByEmail(ctx, email)
 	if errors.Is(err, pgx.ErrNoRows) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-
-		w.Write([]byte(`{"error": "Invalid credentials"}`))
-		return
+		return "", "", ErrUserNotFound
 	} else if err != nil {
-		fmt.Print("failed to query:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return "", "", err
 	}
 
-	if !comparePassword(u.Password, body.Password) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-
-		w.Write([]byte(`{"error": "Invalid credentials"}`))
-		return
+	if !comparePassword(u.Password, password) {
+		return "", "", ErrWrongCredentials
 	}
 
-	accessToken, err := createJWT(u, s.JWTAccessSecret, s.JWTAccessExp)
+	accessToken, err = createJWT(u, s.JWTAccessSecret, s.JWTAccessExp)
 	if err != nil {
 		fmt.Println("failed to create access token:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return "", "", err
 	}
 
-	refreshToken, err := createJWT(u, s.JWTRefreshSecret, s.JWTRefreshExp)
+	refreshToken, err = createJWT(u, s.JWTRefreshSecret, s.JWTRefreshExp)
 	if err != nil {
 		fmt.Println("failed to create refresh token:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return "", "", err
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	res, err := json.Marshal(struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-	}{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	})
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Write(res)
+	return accessToken, refreshToken, nil
 }
 
-func (s *Token) Refresh(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		RefreshToken string `json:"refresh_token"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	token, err := validateJWT(body.RefreshToken, s.JWTRefreshSecret)
+func (s *Token) Refresh(ctx context.Context, refreshToken string) (string, error) {
+	token, err := validateJWT(refreshToken, s.JWTRefreshSecret)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-
-		w.Write([]byte(`{"error": "Invalid token"}`))
-		return
+		return "", ErrInvalidToken
 	}
 
 	if !token.Valid {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-
-		w.Write([]byte(`{"error": "Invalid token"}`))
-		return
+		return "", ErrInvalidToken
 	}
 
 	userIDString, err := token.Claims.GetSubject()
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-
-		w.Write([]byte(`{"error": "Invalid token"}`))
-		return
+		return "", ErrInvalidToken
 	}
 
 	userID, err := uuid.Parse(userIDString)
 	if err != nil {
 		fmt.Printf("Error parsing UUID: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-
-		w.Write([]byte(`{"error": "Invalid token"}`))
+		return "", ErrInvalidToken
 	}
 
-	u, err := s.Queries.GetUserByID(r.Context(), userID)
+	u, err := s.Queries.GetUserByID(ctx, userID)
 	if err != nil {
 		fmt.Print("failed to query:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		return "", err
 	}
 
 	accessToken, err := createJWT(u, s.JWTAccessSecret, s.JWTAccessExp)
 	if err != nil {
 		fmt.Println("failed to create access token:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return "", err
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	res, err := json.Marshal(struct {
-		AccessToken string `json:"access_token"`
-	}{
-		AccessToken: accessToken,
-	})
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Write(res)
+	return accessToken, nil
 }
 
 func createJWT(
@@ -182,8 +107,6 @@ func createJWT(
 
 // TODO: find a way to handle duplicate code (jwt internal package?)
 //		 also validate may need more error handling
-
-var ErrExpiredToken = fmt.Errorf("token is expired")
 
 func validateJWT(tokenString string, jwtSecret string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {

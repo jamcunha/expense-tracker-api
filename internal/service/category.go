@@ -1,15 +1,14 @@
 package service
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
-	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	cursor "github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 )
 
@@ -18,81 +17,42 @@ type Category struct {
 	Queries *repository.Queries
 }
 
-func (s *Category) GetByID(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		fmt.Println("Handler Error:", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	userID := r.Context().Value("userID").(uuid.UUID)
-
-	c, err := s.Queries.GetCategoryByID(r.Context(), repository.GetCategoryByIDParams{
+func (s *Category) GetByID(ctx context.Context, id, userID uuid.UUID) (repository.Category, error) {
+	c, err := s.Queries.GetCategoryByID(ctx, repository.GetCategoryByIDParams{
 		ID:     id,
 		UserID: userID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-
-		w.Write([]byte(`{"error": "Category does not exist"}`))
-		return
+		return repository.Category{}, ErrCategoryNotFound
 	} else if err != nil {
 		fmt.Print("failed to insert:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return repository.Category{}, err
 	}
 
-	res, err := json.Marshal(c)
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(res)
+	return c, nil
 }
 
-func (s *Category) GetAll(w http.ResponseWriter, r *http.Request) {
-	limitStr := r.URL.Query().Get("limit")
-	if limitStr == "" {
-		limitStr = "10"
-	}
-
-	const decimal = 10
-	const bitSize = 32
-	limit, err := strconv.ParseInt(limitStr, decimal, bitSize)
-	if err != nil || limit < 1 {
-		fmt.Println("Handler Error:", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	cursor := r.URL.Query().Get("cursor")
-
-	userID := r.Context().Value("userID").(uuid.UUID)
-
+func (s *Category) GetAll(
+	ctx context.Context,
+	userID uuid.UUID,
+	limit int32,
+	cur string,
+) ([]repository.Category, error) {
 	var categories []repository.Category
+	var err error
 
-	if cursor == "" {
-		categories, err = s.Queries.GetUserCategories(
-			r.Context(),
-			repository.GetUserCategoriesParams{
-				UserID: userID,
-				Limit:  int32(limit),
-			},
-		)
+	if cur == "" {
+		categories, err = s.Queries.GetUserCategories(ctx, repository.GetUserCategoriesParams{
+			UserID: userID,
+			Limit:  int32(limit),
+		})
 	} else {
-		t, id, err := decodeCursor(cursor)
+		t, id, err := cursor.DecodeCursor(cur)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+			return []repository.Category{}, err
 		}
 
-		categories, err = s.Queries.GetUserCategoriesPaged(r.Context(), repository.GetUserCategoriesPagedParams{
+		categories, err = s.Queries.GetUserCategoriesPaged(ctx, repository.GetUserCategoriesPagedParams{
 			UserID:    userID,
 			CreatedAt: t,
 			ID:        id,
@@ -101,169 +61,71 @@ func (s *Category) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-
-		w.Write([]byte(`{"error": "No categories found"}`))
-		return
+		return []repository.Category{}, ErrCategoryNotFound
 	} else if err != nil {
 		fmt.Println("failed to find:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return []repository.Category{}, err
 	}
 
-	var response struct {
-		Categories []repository.Category `json:"categories"`
-		Next       string                `json:"next,omitempty"`
-	}
-
-	response.Categories = categories
-	response.Next = ""
-
-	if len(categories) == int(limit) {
-		lastCategory := categories[len(categories)-1]
-		cursor = encodeCursor(lastCategory.CreatedAt, lastCategory.ID)
-	}
-
-	res, err := json.Marshal(response)
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(res)
+	return categories, nil
 }
 
-func (s *Category) Create(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Name string `json:"name"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	userID := r.Context().Value("userID").(uuid.UUID)
-
+func (s *Category) Create(
+	ctx context.Context,
+	name string,
+	userID uuid.UUID,
+) (repository.Category, error) {
 	now := time.Now()
-	c, err := s.Queries.CreateCategory(r.Context(), repository.CreateCategoryParams{
+	c, err := s.Queries.CreateCategory(ctx, repository.CreateCategoryParams{
 		ID:        uuid.New(),
 		CreatedAt: now,
 		UpdatedAt: now,
-		Name:      body.Name,
+		Name:      name,
 		UserID:    userID,
 	})
 	if err != nil {
 		fmt.Println("failed to insert:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return repository.Category{}, err
 	}
 
-	res, err := json.Marshal(c)
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-
-	w.Write(res)
+	return c, nil
 }
 
-func (s *Category) Update(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		fmt.Println("Handler Error:", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	var body struct {
-		Name string `json:"name"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-
-	}
-
-	userID := r.Context().Value("userID").(uuid.UUID)
-
-	c, err := s.Queries.UpdateCategory(r.Context(), repository.UpdateCategoryParams{
-		Name:      body.Name,
+func (s *Category) Update(
+	ctx context.Context,
+	id, userID uuid.UUID,
+	name string,
+) (repository.Category, error) {
+	c, err := s.Queries.UpdateCategory(ctx, repository.UpdateCategoryParams{
+		Name:      name,
 		UpdatedAt: time.Now(),
 		ID:        id,
 		UserID:    userID,
 	})
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-
-		w.Write([]byte(`{"error": "Category does not exist"}`))
-		return
+		return repository.Category{}, ErrCategoryNotFound
 	} else if err != nil {
-		fmt.Println("failed to update:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return repository.Category{}, err
 	}
 
-	res, err := json.Marshal(c)
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(res)
+	return c, nil
 }
 
-func (s *Category) DeleteByID(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		fmt.Println("Hander Error: ", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	userID := r.Context().Value("userID").(uuid.UUID)
-
-	c, err := s.Queries.DeleteCategory(r.Context(), repository.DeleteCategoryParams{
+func (s *Category) DeleteByID(
+	ctx context.Context,
+	id, userID uuid.UUID,
+) (repository.Category, error) {
+	c, err := s.Queries.DeleteCategory(ctx, repository.DeleteCategoryParams{
 		ID:     id,
 		UserID: userID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-
-		w.Write([]byte(`{"error": "Category does not exist"}`))
-		return
+		return repository.Category{}, ErrCategoryNotFound
 	} else if err != nil {
 		fmt.Println("failed to delete:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return repository.Category{}, err
 	}
 
-	res, err := json.Marshal(c)
-	if err != nil {
-		fmt.Println("failed to marshal:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(res)
+	return c, nil
 }
