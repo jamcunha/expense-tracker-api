@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	cursor "github.com/jamcunha/expense-tracker/internal"
+	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 	"github.com/jamcunha/expense-tracker/internal/service"
 )
@@ -105,7 +105,7 @@ func (h *Category) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	if len(categories) == int(limit) {
 		lastCategory := categories[len(categories)-1]
-		cur = cursor.EncodeCursor(lastCategory.CreatedAt, lastCategory.ID)
+		cur = internal.EncodeCursor(lastCategory.CreatedAt, lastCategory.ID)
 	}
 
 	res, err := json.Marshal(response)

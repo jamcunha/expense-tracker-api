@@ -1,4 +1,4 @@
-package cursor
+package internal
 
 import (
 	"encoding/base64"

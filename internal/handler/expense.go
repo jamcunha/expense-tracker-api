@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	cursor "github.com/jamcunha/expense-tracker/internal"
+	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 	"github.com/jamcunha/expense-tracker/internal/service"
 	"github.com/shopspring/decimal"
@@ -107,7 +107,7 @@ func (h *Expense) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	if len(expenses) == int(limit) {
 		lastExpense := expenses[len(expenses)-1]
-		response.Next = cursor.EncodeCursor(lastExpense.CreatedAt, lastExpense.ID)
+		response.Next = internal.EncodeCursor(lastExpense.CreatedAt, lastExpense.ID)
 	}
 
 	res, err := json.Marshal(response)
@@ -174,7 +174,7 @@ func (h *Expense) GetByCategory(w http.ResponseWriter, r *http.Request) {
 
 	if len(expenses) == int(limit) {
 		lastExpenses := expenses[len(expenses)-1]
-		response.Next = cursor.EncodeCursor(lastExpenses.CreatedAt, lastExpenses.ID)
+		response.Next = internal.EncodeCursor(lastExpenses.CreatedAt, lastExpenses.ID)
 	}
 
 	res, err := json.Marshal(response)

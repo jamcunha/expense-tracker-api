@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	cursor "github.com/jamcunha/expense-tracker/internal"
+	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 )
 
@@ -47,7 +47,7 @@ func (s *Category) GetAll(
 			Limit:  int32(limit),
 		})
 	} else {
-		t, id, err := cursor.DecodeCursor(cur)
+		t, id, err := internal.DecodeCursor(cur)
 		if err != nil {
 			return []repository.Category{}, err
 		}

@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	cursor "github.com/jamcunha/expense-tracker/internal"
+	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 	"github.com/jamcunha/expense-tracker/internal/service"
 	"github.com/shopspring/decimal"
@@ -108,7 +108,7 @@ func (h *Budget) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	if len(budgets) == int(limit) {
 		lastBudget := budgets[len(budgets)-1]
-		response.Next = cursor.EncodeCursor(lastBudget.CreatedAt, lastBudget.ID)
+		response.Next = internal.EncodeCursor(lastBudget.CreatedAt, lastBudget.ID)
 	}
 
 	res, err := json.Marshal(response)
