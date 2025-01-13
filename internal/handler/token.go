@@ -7,8 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jamcunha/expense-tracker/internal/repository"
+	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/service"
 )
 
@@ -23,7 +22,7 @@ type JWTParams struct {
 	JWTRefreshExp    time.Duration
 }
 
-func NewToken(db *pgx.Conn, queries *repository.Queries, jwtParams JWTParams) *Token {
+func NewToken(db internal.DBConn, queries internal.Querier, jwtParams JWTParams) *Token {
 	return &Token{
 		service: service.Token{
 			DB:               db,

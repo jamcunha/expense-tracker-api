@@ -14,8 +14,8 @@ import (
 )
 
 type Budget struct {
-	DB      *pgx.Conn
-	Queries *repository.Queries
+	DB      internal.DBConn
+	Queries internal.Querier
 }
 
 func (s *Budget) GetByID(ctx context.Context, id, userID uuid.UUID) (repository.Budget, error) {

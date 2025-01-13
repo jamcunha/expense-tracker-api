@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
+	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 	"github.com/jamcunha/expense-tracker/internal/service"
 )
@@ -17,7 +17,7 @@ type User struct {
 	service service.User
 }
 
-func NewUser(db *pgx.Conn, queries *repository.Queries) *User {
+func NewUser(db internal.DBConn, queries internal.Querier) *User {
 	return &User{
 		service: service.User{
 			DB:      db,

@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 	"github.com/jamcunha/expense-tracker/internal/service"
@@ -19,7 +18,7 @@ type Expense struct {
 	service service.Expense
 }
 
-func NewExpense(db *pgx.Conn, queries *repository.Queries) *Expense {
+func NewExpense(db internal.DBConn, queries internal.Querier) *Expense {
 	return &Expense{
 		service: service.Expense{
 			DB:      db,

@@ -13,8 +13,8 @@ import (
 )
 
 type Category struct {
-	DB      *pgx.Conn
-	Queries *repository.Queries
+	DB      internal.DBConn
+	Queries internal.Querier
 }
 
 func (s *Category) GetByID(ctx context.Context, id, userID uuid.UUID) (repository.Category, error) {

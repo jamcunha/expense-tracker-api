@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 	"github.com/jamcunha/expense-tracker/internal/service"
@@ -20,7 +19,7 @@ type Budget struct {
 	service service.Budget
 }
 
-func NewBudget(db *pgx.Conn, queries *repository.Queries) *Budget {
+func NewBudget(db internal.DBConn, queries internal.Querier) *Budget {
 	return &Budget{
 		service: service.Budget{
 			DB:      db,

@@ -9,13 +9,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Token struct {
-	DB               *pgx.Conn
-	Queries          *repository.Queries
+	DB               internal.DBConn
+	Queries          internal.Querier
 	JWTAccessSecret  string
 	JWTRefreshSecret string
 	JWTAccessExp     time.Duration

@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 	"github.com/jamcunha/expense-tracker/internal/service"
@@ -18,7 +17,7 @@ type Category struct {
 	service service.Category
 }
 
-func NewCategory(db *pgx.Conn, queries *repository.Queries) *Category {
+func NewCategory(db internal.DBConn, queries internal.Querier) *Category {
 	return &Category{
 		service: service.Category{
 			DB:      db,

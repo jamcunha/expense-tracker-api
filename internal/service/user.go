@@ -7,13 +7,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
-	DB      *pgx.Conn
-	Queries *repository.Queries
+	DB      internal.DBConn
+	Queries internal.Querier
 }
 
 func (s *User) GetByID(ctx context.Context, id uuid.UUID) (repository.User, error) {

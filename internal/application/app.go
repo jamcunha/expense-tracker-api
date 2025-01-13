@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jamcunha/expense-tracker/internal"
 	"github.com/jamcunha/expense-tracker/internal/middleware"
 	"github.com/jamcunha/expense-tracker/internal/repository"
 
@@ -15,8 +16,8 @@ import (
 type App struct {
 	router *http.ServeMux
 
-	DB      *pgx.Conn
-	Queries *repository.Queries
+	DB      internal.DBConn
+	Queries internal.Querier
 	config  Config
 }
 
@@ -28,7 +29,7 @@ func New(config Config) (*App, error) {
 
 	app := &App{
 		DB:      conn,
-		Queries: repository.New(conn),
+		Queries: internal.NewQuerier(repository.New(conn)),
 		config:  config,
 	}
 	app.loadRoutes("/api/v1")
