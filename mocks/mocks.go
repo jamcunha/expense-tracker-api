@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// TODO: extend mockDb (or mockQuerier) to store data
+
 type MockDB struct {
 	mock.Mock
 }
