@@ -25,7 +25,7 @@ func TestUserService(t *testing.T) {
 	now := time.Now()
 	expectedPassword := "passwd"
 	encPassword, err := bcrypt.GenerateFromPassword([]byte(expectedPassword), bcrypt.DefaultCost)
-	if !assert.NoErrorf(t, err, "expected to generate hash from password") {
+	if !assert.Nilf(t, err, "expected to generate hash from password") {
 		t.FailNow()
 	}
 
@@ -102,7 +102,7 @@ func TestUserService(t *testing.T) {
 
 		user, err := userService.DeleteByID(ctx, expectedUser.ID)
 
-		assert.NoError(t, err)
+		assert.Nil(t, err)
 		assertUserEqual(t, &expectedUser, &user)
 	})
 
