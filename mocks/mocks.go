@@ -28,6 +28,7 @@ func (m *MockDB) Close(ctx context.Context) error {
 }
 
 type MockTx struct {
+	pgx.Tx
 	mock.Mock
 }
 
@@ -230,7 +231,7 @@ func (m *MockQuerier) UpdateBudgetAmount(
 	arg repository.UpdateBudgetAmountParams,
 ) error {
 	args := m.Called(ctx, arg)
-	return args.Error(1)
+	return args.Error(0)
 }
 
 func (m *MockQuerier) UpdateCategory(
